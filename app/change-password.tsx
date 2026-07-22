@@ -8,11 +8,12 @@ export default function ChangePasswordScreen() {
   const router = useRouter();
   const { email } = useLocalSearchParams();
 
+  const [otp, setOtp] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
 
   const handleConfirm = async () => {
-    if (!password || !confirmPassword) {
+    if (!otp || !password || !confirmPassword) {
       Alert.alert('تنبيه', 'يرجى إدخال كل الحقول');
       return;
     }
@@ -26,10 +27,11 @@ export default function ChangePasswordScreen() {
       const response = await axios.post('/auth/reset-password', {
         email,
         password,
+        otp,
       });
 
       if (response.status === 200) {
-        Alert.alert('تم ✅', 'تم تعيين كلمة المرور بنجاح');
+        Alert.alert('تم', 'تم تعيين كلمة المرور بنجاح');
         router.replace('/login');
       }
     } catch (error: any) {
@@ -40,21 +42,26 @@ export default function ChangePasswordScreen() {
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
-      {/* زر الرجوع */}
       <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
         <Ionicons name="arrow-back" size={24} color="#c23a8c" />
       </TouchableOpacity>
 
-      {/* الصورة */}
       <Image
         source={require('../assets/images/change-password.png')}
         style={styles.image}
         resizeMode="contain"
       />
 
-      {/* الحقول */}
       <TextInput
-        placeholder="Type New Password"
+        placeholder="رمز التحقق (OTP)"
+        value={otp}
+        onChangeText={setOtp}
+        keyboardType="number-pad"
+        style={styles.input}
+      />
+
+      <TextInput
+        placeholder="كلمة المرور الجديدة"
         secureTextEntry
         value={password}
         onChangeText={setPassword}
@@ -62,16 +69,15 @@ export default function ChangePasswordScreen() {
       />
 
       <TextInput
-        placeholder="Re-Type New Password"
+        placeholder="إعادة كلمة المرور"
         secureTextEntry
         value={confirmPassword}
         onChangeText={setConfirmPassword}
         style={styles.input}
       />
 
-      {/* زر التأكيد */}
       <TouchableOpacity style={styles.button} onPress={handleConfirm}>
-        <Text style={styles.buttonText}>Confirm</Text>
+        <Text style={styles.buttonText}>تأكيد</Text>
       </TouchableOpacity>
     </ScrollView>
   );
@@ -86,17 +92,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
     flexGrow: 1,
   },
-  backButton: {
-    position: 'absolute',
-    top: 50,
-    left: 20,
-    zIndex: 1,
-  },
-  image: {
-    width: '100%',
-    height: 250,
-    marginBottom: 30,
-  },
+  backButton: { position: 'absolute', top: 50, left: 20, zIndex: 1 },
+  image: { width: '100%', height: 250, marginBottom: 30 },
   input: {
     width: '80%',
     maxWidth: 400,
@@ -116,10 +113,5 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     marginTop: 10,
   },
-  buttonText: {
-    color: '#fff',
-    fontSize: 16,
-    textAlign: 'center',
-    fontWeight: 'bold',
-  },
+  buttonText: { color: '#fff', fontSize: 16, textAlign: 'center', fontWeight: 'bold' },
 });

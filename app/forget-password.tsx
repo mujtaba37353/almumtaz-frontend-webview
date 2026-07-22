@@ -18,7 +18,10 @@ export default function ForgetPasswordScreen() {
       const response = await axios.post('/auth/forgot-password', { email });
 
       if (response.status === 200) {
-        Alert.alert('تم', 'تم التحقق من البريد الإلكتروني');
+        const msg = response.data?.devOtp
+          ? `رمز التطوير: ${response.data.devOtp}`
+          : 'تم إرسال رمز التحقق إلى بريدك';
+        Alert.alert('تم', msg);
         router.push({ pathname: '/change-password', params: { email } });
       }
     } catch (error: any) {
@@ -26,23 +29,19 @@ export default function ForgetPasswordScreen() {
       Alert.alert('خطأ', error?.response?.data?.message || 'فشل في إرسال الطلب');
     }
   };
-  
 
   return (
     <View style={styles.container}>
-      {/* زر الرجوع */}
       <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
         <Ionicons name="arrow-back" size={24} color="#c23a8c" />
       </TouchableOpacity>
 
-      {/* الصورة */}
       <Image source={require('../assets/images/forget-image.png')} style={styles.image} resizeMode="contain" />
 
-      {/* حقل البريد */}
       <View style={styles.inputContainer}>
         <Ionicons name="mail-outline" size={20} color="#999" style={styles.icon} />
         <TextInput
-          placeholder="Email"
+          placeholder="البريد الإلكتروني"
           value={email}
           onChangeText={setEmail}
           keyboardType="email-address"
@@ -51,9 +50,8 @@ export default function ForgetPasswordScreen() {
         />
       </View>
 
-      {/* زر الإرسال */}
       <TouchableOpacity style={styles.button} onPress={handleResetPassword}>
-        <Text style={styles.buttonText}>Reset Password</Text>
+        <Text style={styles.buttonText}>إرسال رمز التحقق</Text>
       </TouchableOpacity>
     </View>
   );
@@ -66,17 +64,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 20,
     justifyContent: 'center',
   },
-  backButton: {
-    position: 'absolute',
-    top: 50,
-    left: 20,
-  },
-  image: {
-    width: '100%',
-    height: 220,
-    alignSelf: 'center',
-    marginBottom: 40,
-  },
+  backButton: { position: 'absolute', top: 50, left: 20 },
+  image: { width: '100%', height: 220, alignSelf: 'center', marginBottom: 40 },
   inputContainer: {
     flexDirection: 'row',
     alignSelf: 'center',
@@ -89,14 +78,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 10,
     marginBottom: 20,
   },
-  icon: {
-    marginRight: 6,
-  },
-  input: {
-    flex: 1,
-    paddingVertical: 10,
-    fontSize: 16,
-  },
+  icon: { marginRight: 6 },
+  input: { flex: 1, paddingVertical: 10, fontSize: 16 },
   button: {
     width: '80%',
     maxWidth: 400,
@@ -105,10 +88,5 @@ const styles = StyleSheet.create({
     borderRadius: 8,
     alignSelf: 'center',
   },
-  buttonText: {
-    color: '#fff',
-    fontSize: 16,
-    textAlign: 'center',
-    fontWeight: 'bold',
-  },
+  buttonText: { color: '#fff', fontSize: 16, textAlign: 'center', fontWeight: 'bold' },
 });

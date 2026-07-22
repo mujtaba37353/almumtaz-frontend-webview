@@ -1,13 +1,12 @@
 import React, { useEffect, useState } from 'react';
 import {
   View, Text, StyleSheet, FlatList, TouchableOpacity,
-  Image, ActivityIndicator, ScrollView
+  Image, ActivityIndicator, Platform
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from '../api/axiosInstance';
 import { Ionicons } from '@expo/vector-icons';
-import { Platform } from 'react-native';
 import RNPickerSelect from 'react-native-picker-select';
 
 export default function UsersScreen() {
@@ -20,6 +19,7 @@ export default function UsersScreen() {
   const [selectedRole, setSelectedRole] = useState<string | null>(null);
   const [availableRoleFilters, setAvailableRoleFilters] = useState<string[]>([]);
   const [stores, setStores] = useState<any[]>([]);
+  const [currentUser, setCurrentUser] = useState<any>(null); // ✅ جديد
 
   const fetchUsers = async () => {
     try {
@@ -32,9 +32,9 @@ export default function UsersScreen() {
 
       const currentUser = profileRes.data;
       setRole(currentUser.role);
+      setCurrentUser(currentUser); // ✅ جديد
       await AsyncStorage.setItem('user', JSON.stringify(currentUser));
 
-      // 🟢 تحديد الأدوار المتاحة حسب الدور الحالي
       if (['AppOwner', 'AppAdmin'].includes(currentUser.role)) {
         setAvailableRoleFilters(['AppAdmin', 'AccountOwner']);
       } else if (['AccountOwner', 'GeneralAccountant'].includes(currentUser.role)) {
@@ -75,15 +75,12 @@ export default function UsersScreen() {
 
   const applyFilter = () => {
     let filtered = [...allUsers];
-
     if (selectedStore) {
       filtered = filtered.filter(user => user.store?._id === selectedStore);
     }
-
     if (selectedRole) {
       filtered = filtered.filter(user => user.role === selectedRole);
     }
-
     setUsers(filtered);
   };
 
@@ -94,6 +91,33 @@ export default function UsersScreen() {
   useEffect(() => {
     applyFilter();
   }, [selectedStore, selectedRole]);
+
+  // ✅ دالة التحكم في عرض زر Manage User
+  const canManageUser = (targetUser: any) => {
+  if (!role || !targetUser || !currentUser) return false;
+
+  // صلاحيات عليا
+  if (role === 'AppOwner' && targetUser.role === 'AppAdmin') return true;
+  if (role === 'AppAdmin') return false;
+  if (role === 'AccountOwner') return true;
+  if (
+    role === 'GeneralAccountant' &&
+    targetUser.account?.toString?.() === currentUser.account?.toString?.()
+  ) return true;
+
+  // مدير المتجر يتحقق من:
+  // - نفس المتجر
+  // - الدور Cashier أو StoreAccountant
+  if (
+    role === 'StoreAdmin' &&
+    targetUser.store?.toString?.() === currentUser.store?.toString?.() &&
+    ['StoreAccountant', 'Cashier'].includes(targetUser.role)
+  ) return true;
+
+  return false;
+};
+
+
 
   const renderUserCard = ({ item }: any) => (
     <View style={styles.card}>
@@ -110,17 +134,28 @@ export default function UsersScreen() {
         👤 {item.status === 'active' || item.active ? '🟢 Active' : '🔴 InActive'}
       </Text>
       <Text style={styles.status}>🎯 {item.role}</Text>
-      {item.store && item.store.name && (
+      {item.store?.name && (
         <Text style={styles.storeText}>🏬 {item.store.name}</Text>
       )}
-      <TouchableOpacity
-        style={styles.manageButton}
-        onPress={() => {
-          router.push(`/admin/manage-user/${item._id}`);
-        }}
-      >
-        <Text style={styles.manageText}>Manage User</Text>
-      </TouchableOpacity>
+
+      {/* الزرين معًا */}
+      <View style={{ flexDirection: 'row', marginTop: 8, gap: 8 }}>
+        {canManageUser(item) && (
+          <TouchableOpacity
+            style={styles.manageButton}
+            onPress={() => router.push(`/admin/manage-user/${item._id}`)}
+          >
+            <Text style={styles.manageText}>Manage User</Text>
+          </TouchableOpacity>
+        )}
+
+        <TouchableOpacity
+          style={[styles.manageButton, { backgroundColor: '#eee' }]}
+          onPress={() => router.push(`/admin/user-info/${item._id}`)}
+        >
+          <Text style={[styles.manageText, { color: '#333' }]}>View Info</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 
@@ -150,39 +185,38 @@ export default function UsersScreen() {
       {availableRoleFilters.length > 0 && (
         <View style={styles.dropdownContainer}>
           {Platform.OS === 'web' ? (
-              <select
-                value={selectedRole || ''}
-                onChange={(e) => setSelectedRole(e.target.value || null)}
-                style={{
-                  padding: 10,
-                  borderRadius: 8,
-                  borderColor: '#ccc',
-                  borderWidth: 1,
-                  marginBottom: 10,
-                  width: '60%',
-                  alignSelf: 'center'
-                }}
-              >
-                <option value="">فلترة حسب الدور</option>
-                {availableRoleFilters.map((role) => (
-                  <option key={role} value={role}>
-                    {role}
-                  </option>
-                ))}
-              </select>
-            ) : (
-              <RNPickerSelect
-                onValueChange={(value) => setSelectedRole(value)}
-                placeholder={{ label: 'فلترة حسب الدور', value: null }}
-                value={selectedRole}
-                items={availableRoleFilters.map((role) => ({
-                  label: role,
-                  value: role
-                }))}
-                style={pickerSelectStyles}
-              />
-            )}
-
+            <select
+              value={selectedRole || ''}
+              onChange={(e) => setSelectedRole(e.target.value || null)}
+              style={{
+                padding: 10,
+                borderRadius: 8,
+                borderColor: '#ccc',
+                borderWidth: 1,
+                marginBottom: 10,
+                width: '60%',
+                alignSelf: 'center'
+              }}
+            >
+              <option value="">فلترة حسب الدور</option>
+              {availableRoleFilters.map((role) => (
+                <option key={role} value={role}>
+                  {role}
+                </option>
+              ))}
+            </select>
+          ) : (
+            <RNPickerSelect
+              onValueChange={(value) => setSelectedRole(value)}
+              placeholder={{ label: 'فلترة حسب الدور', value: null }}
+              value={selectedRole}
+              items={availableRoleFilters.map((role) => ({
+                label: role,
+                value: role
+              }))}
+              style={pickerSelectStyles}
+            />
+          )}
         </View>
       )}
 

@@ -9,7 +9,7 @@ export default function AdminLayout() {
   const router = useRouter();
   const pathname = usePathname();
   const [user, setUser] = useState<any>(null);
-  const [navItems, setNavItems] = useState([]);
+  const [navItems, setNavItems] = useState<any[]>([]);
 
   const fetchUser = async () => {
     try {
@@ -30,41 +30,47 @@ export default function AdminLayout() {
 
     if (role === 'AppOwner' || role === 'AppAdmin') {
       setNavItems([
-        { label: 'Main', icon: 'home-outline', path: '/admin/main' },
-        { label: 'Users', icon: 'people-outline', path: '/admin/users' },
-        { label: 'Subscriptions', icon: 'document-text-outline', path: '/admin/subscriptions' },
-        { label: 'Accounts', icon: 'person-circle-outline', path: '/admin/accounts' },
+        { label: 'الرئيسية', icon: 'home-outline', path: '/admin/main' },
+        { label: 'المستخدمون', icon: 'people-outline', path: '/admin/users' },
+        { label: 'الاشتراكات', icon: 'document-text-outline', path: '/admin/subscriptions' },
+        { label: 'الحسابات', icon: 'person-circle-outline', path: '/admin/accounts' },
       ]);
     } else if (role === 'AccountOwner' || role === 'GeneralAccountant') {
       setNavItems([
-        { label: 'Main', icon: 'home-outline', path: '/admin/main' },
-        { label: 'Users', icon: 'people-outline', path: '/admin/users' },
-        { label: 'Stores', icon: 'storefront-outline', path: '/admin/stores' },
-        { label: 'Products', icon: 'cube-outline', path: '/admin/products' },
-        { label: 'Reports', icon: 'bar-chart-outline', path: '/admin/reports' },
-        { label: 'Sales', icon: 'calculator-outline', path: '/admin/sales' },
+        { label: 'الرئيسية', icon: 'home-outline', path: '/admin/main' },
+        { label: 'المستخدمون', icon: 'people-outline', path: '/admin/users' },
+        { label: 'المتاجر', icon: 'storefront-outline', path: '/admin/stores' },
+        { label: 'المنتجات', icon: 'cube-outline', path: '/admin/products' },
+        { label: 'التقارير', icon: 'bar-chart-outline', path: '/admin/reports' },
+        { label: 'المبيعات', icon: 'calculator-outline', path: '/admin/sales' },
+        ...(role === 'AccountOwner'
+          ? [
+              { label: 'المنشأة', icon: 'business-outline', path: '/admin/business-settings' },
+              { label: 'ZATCA', icon: 'shield-checkmark-outline', path: '/admin/zatca' },
+            ]
+          : []),
       ]);
     } else if (role === 'StoreAdmin') {
       setNavItems([
-        { label: 'Main', icon: 'home-outline', path: '/admin/main' },
-        { label: 'Users', icon: 'people-outline', path: '/admin/users' },
-        { label: 'Products', icon: 'cube-outline', path: '/admin/products' },
-        { label: 'Reports', icon: 'bar-chart-outline', path: '/admin/reports' },
-        { label: 'Sales', icon: 'calculator-outline', path: '/admin/sales' },
+        { label: 'الرئيسية', icon: 'home-outline', path: '/admin/main' },
+        { label: 'المستخدمون', icon: 'people-outline', path: '/admin/users' },
+        { label: 'المنتجات', icon: 'cube-outline', path: '/admin/products' },
+        { label: 'التقارير', icon: 'bar-chart-outline', path: '/admin/reports' },
+        { label: 'المبيعات', icon: 'calculator-outline', path: '/admin/sales' },
       ]);
     } else if (role === 'StoreAccountant') {
       setNavItems([
-        { label: 'Main', icon: 'home-outline', path: '/admin/main' },
-        { label: 'Users', icon: 'people-outline', path: '/admin/users' },
-        { label: 'Products', icon: 'cube-outline', path: '/admin/products' },
-        { label: 'Reports', icon: 'bar-chart-outline', path: '/admin/reports' },
-        { label: 'Sales', icon: 'calculator-outline', path: '/admin/sales' },
+        { label: 'الرئيسية', icon: 'home-outline', path: '/admin/main' },
+        { label: 'المستخدمون', icon: 'people-outline', path: '/admin/users' },
+        { label: 'المنتجات', icon: 'cube-outline', path: '/admin/products' },
+        { label: 'التقارير', icon: 'bar-chart-outline', path: '/admin/reports' },
+        { label: 'المبيعات', icon: 'calculator-outline', path: '/admin/sales' },
       ]);
     } else if (role === 'Cashier') {
       setNavItems([
-        { label: 'Main', icon: 'home-outline', path: '/admin/main' },
-        { label: 'Reports', icon: 'bar-chart-outline', path: '/admin/reports' },
-        { label: 'Sales', icon: 'calculator-outline', path: '/admin/sales' },
+        { label: 'الرئيسية', icon: 'home-outline', path: '/admin/main' },
+        { label: 'التقارير', icon: 'bar-chart-outline', path: '/admin/reports' },
+        { label: 'المبيعات', icon: 'calculator-outline', path: '/admin/sales' },
       ]);
     } else {
       setNavItems([]);

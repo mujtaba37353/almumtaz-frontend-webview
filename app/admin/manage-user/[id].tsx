@@ -1,3 +1,4 @@
+// باقي الاستيرادات كما هي
 import React, { useEffect, useState } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
@@ -11,7 +12,6 @@ import {
   ScrollView,
   Image,
 } from 'react-native';
-import * as ImagePicker from 'expo-image-picker';
 import axios from '../../api/axiosInstance';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
@@ -47,7 +47,7 @@ export default function ManageUserScreen() {
             setRoleOptions(['StoreAccountant', 'Cashier']);
           }
 
-          if (["AccountOwner", "GeneralAccountant"].includes(parsed.role)) {
+          if (['AccountOwner', 'GeneralAccountant'].includes(parsed.role)) {
             const storesRes = await axios.get('/stores', {
               headers: { Authorization: `Bearer ${token}` },
             });
@@ -64,7 +64,7 @@ export default function ManageUserScreen() {
           name: res.data.name,
           email: res.data.email,
           role: res.data.role,
-          store: res.data.store || '',
+          store: typeof res.data.store === 'object' ? res.data.store._id : res.data.store,
           image: res.data.profileImage ? `${axios.defaults.baseURL?.replace('/api', '')}${res.data.profileImage}` : null,
         });
       } catch (err) {
@@ -86,17 +86,31 @@ export default function ManageUserScreen() {
         email: form.email,
         role: form.role,
       };
-      if (['StoreAdmin', 'StoreAccountant', 'Cashier'].includes(form.role)) {
-        updatedData['store'] = form.store;
+
+      if (currentUser.role === 'StoreAdmin') {
+        updatedData['store'] = currentUser.store;
       }
+
       await axios.put(`/users/${id}`, updatedData, {
         headers: { Authorization: `Bearer ${token}` },
       });
-      Alert.alert('Success', 'User updated');
+
+      if (
+        ['StoreAdmin', 'StoreAccountant', 'Cashier'].includes(form.role) &&
+        form.store
+      ) {
+        await axios.patch(`/users/${id}/assign-store`, {
+          storeId: form.store,
+        }, {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+      }
+
+      Alert.alert('تم التحديث بنجاح');
       router.back();
     } catch (err: any) {
-      console.error('Update error:', err);
-      Alert.alert('Error', err.response?.data?.message || 'Failed to update user');
+      console.error('❌ Update error:', err.response?.data || err.message);
+      Alert.alert('خطأ', err.response?.data?.message || 'فشل تحديث المستخدم');
     }
   };
 
@@ -116,6 +130,19 @@ export default function ManageUserScreen() {
 
   const isSelf = currentUser?._id?.toString() === user?._id?.toString();
 
+  // ✅ آمن الآن: حتى لو store null
+  let sameStore = false;
+  if (user?.store && currentUser?.store) {
+    const userStoreId =
+      typeof user.store === 'object'
+        ? user.store._id?.toString?.()
+        : user.store?.toString?.();
+
+    const currentStoreId = currentUser.store?.toString?.();
+
+    sameStore = userStoreId === currentStoreId;
+  }
+
   const canEdit = (() => {
     if (!currentUser || !user) return false;
 
@@ -132,7 +159,7 @@ export default function ManageUserScreen() {
     ) return true;
     if (
       currentRole === 'StoreAdmin' &&
-      currentUser.store === user.store &&
+      sameStore &&
       ['StoreAccountant', 'Cashier'].includes(targetRole)
     ) return true;
 
@@ -152,11 +179,6 @@ export default function ManageUserScreen() {
       currentRole === 'GeneralAccountant' &&
       currentUser.account === user.account &&
       targetRole !== 'AccountOwner'
-    ) return true;
-    if (
-      currentRole === 'StoreAdmin' &&
-      currentUser.store === user.store &&
-      ['StoreAccountant', 'Cashier'].includes(targetRole)
     ) return true;
 
     return false;
@@ -226,7 +248,7 @@ export default function ManageUserScreen() {
                   key={role}
                   style={styles.dropdownItem}
                   onPress={() => {
-                    setForm({ ...form, role, store: '' });
+                    setForm({ ...form, role, store: currentUser.store });
                     setShowRoleOptions(false);
                   }}
                 >
@@ -238,7 +260,7 @@ export default function ManageUserScreen() {
         </>
       )}
 
-      {canEdit && isStoreRole && (
+      {canEdit && isStoreRole && currentUser.role !== 'StoreAdmin' && (
         <View style={{ width: '40%', marginBottom: 16 }}>
           <Text style={{ marginBottom: 4 }}>Select Store:</Text>
           <View style={styles.dropdown}>

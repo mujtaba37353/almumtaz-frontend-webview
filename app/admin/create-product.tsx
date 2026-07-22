@@ -3,6 +3,7 @@ import {
   View, Text, TextInput, StyleSheet, ScrollView,
   TouchableOpacity, Image, Alert, Platform
 } from 'react-native';
+import { useLocalSearchParams } from 'expo-router';
 import { useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
@@ -26,24 +27,37 @@ export default function CreateProductScreen() {
   const [role, setRole] = useState<string | null>(null);
   const [specifications, setSpecifications] = useState<any[]>([]);
 
-  useEffect(() => {
-    const fetchStoresAndRole = async () => {
-      const token = await AsyncStorage.getItem('token');
-      const roleVal = await AsyncStorage.getItem('role');
-      setRole(roleVal);
+  const { sku } = useLocalSearchParams();
 
-      if (['AccountOwner', 'GeneralAccountant'].includes(roleVal || '')) {
-        const res = await axios.get('/stores', {
-          headers: { Authorization: `Bearer ${token}` },
-        });
-        setStores(res.data);
-      } else if (roleVal === 'StoreAdmin') {
-        const user = JSON.parse(await AsyncStorage.getItem('user') || '{}');
-        setForm(prev => ({ ...prev, store: user.store }));
+useEffect(() => {
+  const fetchStoresAndRole = async () => {
+    const token = await AsyncStorage.getItem('token');
+    const roleVal = await AsyncStorage.getItem('role');
+    setRole(roleVal);
+
+    if (['AccountOwner', 'GeneralAccountant'].includes(roleVal || '')) {
+      const res = await axios.get('/stores', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      setStores(res.data);
+    } else if (['StoreAdmin', 'StoreAccountant'].includes(roleVal || '')) {
+      const res = await axios.get('/users/profile', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+      if (res.data?.store) {
+        setForm(prev => ({ ...prev, store: res.data.store }));
       }
-    };
-    fetchStoresAndRole();
-  }, []);
+    }
+  };
+
+  fetchStoresAndRole();
+
+  // ✅ إضافة SKU من رابط الصفحة
+  if (sku && typeof sku === 'string') {
+    setForm(prev => ({ ...prev, sku }));
+  }
+}, [sku]);
+
 
   const pickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -67,66 +81,66 @@ export default function CreateProductScreen() {
   };
 
   const handleSubmit = async () => {
-  try {
-    const { name, price, store } = form;
-    if (!name || !price || !store) {
-      Alert.alert('الرجاء تعبئة الاسم، السعر، والمتجر');
-      return;
-    }
-
-    let uploadedImage = '';
-    if (imageUri) {
-      const token = await AsyncStorage.getItem('token');
-      const response = await fetch(imageUri);
-      const blob = await response.blob();
-
-      const file = new File([blob], 'product.jpg', { type: blob.type });
-      const formData = new FormData();
-      formData.append('image', file);
-
-      const uploadRes = await fetch('http://172.20.10.12:5000/api/upload/product', {
-        method: 'POST',
-        headers: { Authorization: `Bearer ${token}` },
-        body: formData,
-      });
-
-      if (!uploadRes.ok) {
-        const errText = await uploadRes.text();
-        console.error('❌ رفع الصورة فشل:', errText);
-        throw new Error('فشل رفع الصورة');
+    try {
+      const { name, price, store } = form;
+      if (!name || !price || !store) {
+        Alert.alert('الرجاء تعبئة الاسم، السعر، والمتجر');
+        return;
       }
 
-      const uploadData = await uploadRes.json();
-      uploadedImage = uploadData.imageUrl;
+      let uploadedImage = '';
+      if (imageUri) {
+        const token = await AsyncStorage.getItem('token');
+        const response = await fetch(imageUri);
+        const blob = await response.blob();
+
+        const file = new File([blob], 'product.jpg', { type: blob.type });
+        const formData = new FormData();
+        formData.append('image', file);
+
+        const uploadBase = (axios.defaults.baseURL || '').replace(/\/$/, '');
+        const uploadRes = await fetch(`${uploadBase}/upload/product`, {
+          method: 'POST',
+          headers: { Authorization: `Bearer ${token}` },
+          body: formData,
+        });
+
+        if (!uploadRes.ok) {
+          const errText = await uploadRes.text();
+          console.error('❌ رفع الصورة فشل:', errText);
+          throw new Error('فشل رفع الصورة');
+        }
+
+        const uploadData = await uploadRes.json();
+        uploadedImage = uploadData.imageUrl;
+      }
+
+      const token = await AsyncStorage.getItem('token');
+      const payload = {
+        ...form,
+        price: parseFloat(form.price),
+        quantity: form.quantity ? parseInt(form.quantity) : undefined,
+        barcodes: form.barcodes.split(',').map(b => b.trim()).filter(b => b),
+        image: uploadedImage,
+        specifications: specifications
+          .filter(s => s.name && s.name.trim() !== '')
+          .map(s => ({
+            name: s.name,
+            price: s.price ? Number(s.price) : undefined
+          })),
+      };
+
+      await axios.post('/products', payload, {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      Alert.alert('تم', 'تم إنشاء المنتج بنجاح');
+      router.back();
+    } catch (err) {
+      console.error('❌ إضافة المنتج فشلت:', err);
+      Alert.alert('خطأ', 'فشل إنشاء المنتج');
     }
-
-    const token = await AsyncStorage.getItem('token');
-    const payload = {
-      ...form,
-      price: parseFloat(form.price),
-      quantity: form.quantity ? parseInt(form.quantity) : undefined,
-      barcodes: form.barcodes.split(',').map(b => b.trim()).filter(b => b),
-      image: uploadedImage,
-      specifications: specifications
-        .filter(s => s.name && s.name.trim() !== '')
-        .map(s => ({
-          name: s.name,
-          price: s.price ? Number(s.price) : undefined
-        })),
-    };
-
-    await axios.post('/products', payload, {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-
-    Alert.alert('تم', 'تم إنشاء المنتج بنجاح');
-    router.back();
-  } catch (err) {
-    console.error('❌ إضافة المنتج فشلت:', err);
-    Alert.alert('خطأ', 'فشل إنشاء المنتج');
-  }
-};
-
+  };
 
   return (
     <ScrollView contentContainerStyle={styles.container}>

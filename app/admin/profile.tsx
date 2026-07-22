@@ -75,7 +75,8 @@ const handleUpdate = async () => {
       const formData = new FormData();
       formData.append('image', file);
 
-      const uploadRes = await fetch('http://172.20.10.12:5000/api/upload/avatar', {
+      const uploadBase = (axios.defaults.baseURL || '').replace(/\/$/, '');
+      const uploadRes = await fetch(`${uploadBase}/upload/avatar`, {
         method: 'POST',
         headers: {
           Authorization: `Bearer ${token}`,

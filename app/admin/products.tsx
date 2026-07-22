@@ -1,7 +1,9 @@
+// ✅ نسخة محسنة من admin/products.tsx: دعم التصفح (pagination) + فلترة متقدمة + عرض 6 كروت في الصف و6 صفوف بالصفحة + أزرار تنقل + زر إضافة منتج للأدوار المصرح بها
+
 import React, { useEffect, useState } from 'react';
 import {
   View, Text, StyleSheet, FlatList, ActivityIndicator,
-  TouchableOpacity, Image, Alert, Platform
+  TouchableOpacity, Image, Alert, Platform, TextInput
 } from 'react-native';
 import { Ionicons } from '@expo/vector-icons';
 import { useRouter } from 'expo-router';
@@ -13,43 +15,74 @@ export default function ProductsScreen() {
   const router = useRouter();
   const [products, setProducts] = useState<any[]>([]);
   const [stores, setStores] = useState<any[]>([]);
-  const [selectedStore, setSelectedStore] = useState<string | null>(null);
-  const [loading, setLoading] = useState(true);
   const [role, setRole] = useState<string | null>(null);
 
-  const fetchData = async () => {
-    try {
-      setLoading(true);
-      const token = await AsyncStorage.getItem('token');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [selectedStore, setSelectedStore] = useState<string | null>(null);
+  const [barcode, setBarcode] = useState('');
+  const [minPrice, setMinPrice] = useState('');
+  const [maxPrice, setMaxPrice] = useState('');
+  const [loading, setLoading] = useState(true);
 
-      const profileRes = await axios.get('/users/profile', {
+  const [page, setPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+
+  const PRODUCTS_PER_PAGE = 36; // 6 كروت * 6 صفوف
+
+  const fetchData = async () => {
+  try {
+    setLoading(true);
+    const token = await AsyncStorage.getItem('token');
+
+    const profileRes = await axios.get('/users/profile', {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+    const roleVal = profileRes.data.role;
+    setRole(roleVal);
+
+    // ✅ تمرير store فقط إذا كان AccountOwner أو GeneralAccountant
+    const storeParam = ['AccountOwner', 'GeneralAccountant'].includes(roleVal)
+      ? (selectedStore ? `store=${selectedStore}` : '')
+      : '';
+
+    const queryParams = [
+      `page=${page}`,
+      `limit=${PRODUCTS_PER_PAGE}`,
+      storeParam,
+      searchTerm ? `search=${searchTerm}` : '',
+      barcode ? `barcode=${barcode}` : '',
+      minPrice ? `minPrice=${minPrice}` : '',
+      maxPrice ? `maxPrice=${maxPrice}` : '',
+    ].filter(Boolean).join('&');
+
+    // ✅ جلب المتاجر فقط إذا كان الدور يسمح بذلك
+    let storesRes = { data: [] };
+    if (['AccountOwner', 'GeneralAccountant'].includes(roleVal)) {
+      storesRes = await axios.get('/stores', {
         headers: { Authorization: `Bearer ${token}` },
       });
-      const userRole = profileRes.data.role;
-      setRole(userRole);
-
-      const [productsRes, storesRes] = await Promise.all([
-        axios.get('/products', { headers: { Authorization: `Bearer ${token}` } }),
-        axios.get('/stores', { headers: { Authorization: `Bearer ${token}` } }),
-      ]);
-
-      setProducts(productsRes.data.data);
-      setStores(storesRes.data);
-    } catch (err) {
-      console.error('Error fetching products:', err);
-      Alert.alert('Error', 'Failed to load products');
-    } finally {
-      setLoading(false);
     }
-  };
+
+    const productsRes = await axios.get(`/products?${queryParams}`, {
+      headers: { Authorization: `Bearer ${token}` },
+    });
+
+    setProducts(productsRes.data.data);
+    setTotalPages(productsRes.data.meta.totalPages);
+    setStores(storesRes.data); // ستكون [] في الأدوار الأخرى
+  } catch (err) {
+    console.error('Error fetching products:', err);
+    Alert.alert('خطأ', 'فشل تحميل المنتجات');
+  } finally {
+    setLoading(false);
+  }
+};
+
+
 
   useEffect(() => {
     fetchData();
-  }, []);
-
-  const filteredProducts = selectedStore
-    ? products.filter((p) => p.store === selectedStore)
-    : products;
+  }, [page, selectedStore, searchTerm, barcode, minPrice, maxPrice]);
 
   const handleDelete = async (id: string) => {
     try {
@@ -90,126 +123,160 @@ export default function ProductsScreen() {
 
   return (
     <View style={styles.container}>
-      <View style={styles.header}>
-        <View style={styles.locationContainer}>
-          <Ionicons name="location" size={16} color="#000" />
-          <Text style={styles.locationText}>Riyadh, Saudi Arabia 🌤️ 30°</Text>
+      <View style={styles.filterContainer}>
+        <TextInput placeholder="بحث بالاسم" value={searchTerm} onChangeText={setSearchTerm} style={styles.fullInput} />
+        <View style={styles.rowInputs}>
+          <TextInput placeholder="باركود" value={barcode} onChangeText={setBarcode} style={styles.smallInput} />
+          <TextInput placeholder="أقل سعر" value={minPrice} onChangeText={setMinPrice} keyboardType="numeric" style={styles.smallInput} />
+          <TextInput placeholder="أعلى سعر" value={maxPrice} onChangeText={setMaxPrice} keyboardType="numeric" style={styles.smallInput} />
         </View>
-        <Text style={styles.dateText}>📅 {new Date().toLocaleDateString('en-GB')} {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
+        <View style={styles.rowInputs}>
+          <View style={styles.pickerWrapper}>
+            {Platform.OS === 'web' ? (
+              <select
+                value={selectedStore || ''}
+                onChange={(e) => setSelectedStore(e.target.value || null)}
+                style={{
+                  padding: '7px 8px',
+                  borderRadius: 10,
+                  border: '1px solid #ccc',
+                  fontSize: 16,
+                  width: '100%',
+                  backgroundColor: '#fff',
+                  marginBottom: 10,
+                }}
+              >
+                <option value="">كل المتاجر</option>
+                {stores.map((s) => (
+                  <option key={s._id} value={s._id}>{s.name}</option>
+                ))}
+              </select>
+            ) : (
+              <RNPickerSelect
+                onValueChange={(value) => setSelectedStore(value)}
+                placeholder={{ label: 'كل المتاجر', value: null }}
+                value={selectedStore}
+                items={stores.map((s) => ({ label: s.name, value: s._id }))}
+                style={pickerSelectStyles}
+              />
+            )}
+          </View>
+        </View>
       </View>
-
-      <Image source={require('../../assets/images/logo.png')} style={styles.logo} resizeMode="contain" />
 
       {['AccountOwner', 'GeneralAccountant', 'StoreAdmin', 'StoreAccountant'].includes(role || '') && (
-        <TouchableOpacity style={styles.addButton} onPress={() => router.push('/admin/create-product')}>
-          <Ionicons name="add-circle-outline" size={18} color="#fff" />
-          <Text style={styles.addText}>Add Product</Text>
-        </TouchableOpacity>
-      )}
-
-      <View style={styles.dropdownContainer}>
-        <Text style={styles.label}>Filter by Store</Text>
-        {Platform.OS === 'web' ? (
-          <select
-            value={selectedStore || ''}
-            onChange={(e) => setSelectedStore(e.target.value || null)}
-            style={{
-              padding: 10,
-              borderRadius: 8,
-              borderColor: '#ccc',
-              borderWidth: 1,
-              marginBottom: 10,
-              width: '100%',
-              backgroundColor: '#fff'
-            }}
-          >
-            <option value="">All Stores</option>
-            {stores.map((store) => (
-              <option key={store._id} value={store._id}>
-                {store.name}
-              </option>
-            ))}
-          </select>
-        ) : (
-          <RNPickerSelect
-            onValueChange={(value) => setSelectedStore(value)}
-            placeholder={{ label: 'All Stores', value: null }}
-            value={selectedStore}
-            items={stores.map((store) => ({
-              label: store.name,
-              value: store._id
-            }))}
-            style={pickerSelectStyles}
-          />
-        )}
-      </View>
-
-      {['AccountOwner', 'GeneralAccountant'].includes(role || '') && (
         <TouchableOpacity
-          style={styles.copyButton}
-          onPress={() => router.push('/admin/copy-products')}
+          style={[styles.pageButton, { alignSelf: 'flex-end', marginBottom: 10 }]}
+          onPress={() => router.push('/admin/create-product')}
         >
-          <Ionicons name="copy" size={18} color="#fff" />
-          <Text style={styles.copyText}>Copy Products</Text>
+          <Ionicons name="add-circle-outline" size={18} color="#fff" />
+          <Text style={styles.pageButtonText}>إضافة منتج</Text>
         </TouchableOpacity>
       )}
+        {['AccountOwner', 'GeneralAccountant'].includes(role || '') && (
+          <TouchableOpacity
+            style={[styles.pageButton, { alignSelf: 'flex-end', marginBottom: 10, backgroundColor: '#32a8c4' }]}
+            onPress={() => router.push('/admin/copy-products')}
+          >
+            <Ionicons name="copy-outline" size={18} color="#fff" />
+            <Text style={styles.pageButtonText}>نسخ المنتجات</Text>
+          </TouchableOpacity>
+        )}
 
-      {loading ? (
-        <ActivityIndicator size="large" color="#812732" style={{ marginTop: 40 }} />
-      ) : (
-        <FlatList
-          data={filteredProducts}
-          keyExtractor={(item) => item._id}
-          renderItem={renderProduct}
-          numColumns={4}
-          contentContainerStyle={styles.list}
-          columnWrapperStyle={{ justifyContent: 'space-between' }}
-        />
-      )}
+      <FlatList
+        data={products}
+        keyExtractor={(item) => item._id}
+        renderItem={renderProduct}
+        numColumns={6}
+        contentContainerStyle={styles.list}
+        columnWrapperStyle={{ justifyContent: 'space-between' }}
+        ListFooterComponent={loading ? <ActivityIndicator size="large" color="#812732" /> : null}
+      />
+
+      <View style={styles.paginationContainer}>
+        <TouchableOpacity
+          style={[styles.pageButton, page === 1 && styles.disabledButton]}
+          onPress={() => page > 1 && setPage(page - 1)}
+        >
+          <Text style={styles.pageButtonText}>⬅ السابق</Text>
+        </TouchableOpacity>
+
+        <Text style={styles.pageInfo}>الصفحة {page} من {totalPages}</Text>
+
+        <TouchableOpacity
+          style={[styles.pageButton, page === totalPages && styles.disabledButton]}
+          onPress={() => page < totalPages && setPage(page + 1)}
+        >
+          <Text style={styles.pageButtonText}>التالي ➡</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
 
 const styles = StyleSheet.create({
   container: { flex: 1, backgroundColor: '#fff', padding: 16 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 8 },
-  locationContainer: { flexDirection: 'row', alignItems: 'center' },
-  locationText: { marginLeft: 4, fontSize: 14, color: '#333' },
-  dateText: { fontSize: 14, color: '#333' },
-  logo: { width: 320, height: 120, alignSelf: 'center', marginVertical: 10 },
-  addButton: {
-    backgroundColor: '#cc4da0', flexDirection: 'row', alignItems: 'center',
-    paddingVertical: 10, paddingHorizontal: 14, borderRadius: 8,
-    alignSelf: 'flex-end', marginBottom: 10,
+  filterContainer: { alignSelf: 'center', width: '50%', gap: 10, marginBottom: 10 },
+  fullInput: {
+    borderWidth: 1, borderColor: '#ccc', borderRadius: 8,
+    paddingHorizontal: 12, paddingVertical: 10, width: '100%'
   },
-  addText: { color: '#fff', fontWeight: 'bold', marginLeft: 6 },
-  copyButton: {
-    backgroundColor: '#812732', flexDirection: 'row', alignItems: 'center',
-    paddingVertical: 10, paddingHorizontal: 14, borderRadius: 8,
-    alignSelf: 'flex-end', marginBottom: 10,
+  rowInputs: { flexDirection: 'row', gap: 20 },
+  smallInput: {
+    flex: 1, borderWidth: 1, borderColor: '#ccc', borderRadius: 8,
+    paddingHorizontal: 12, paddingVertical: 10
   },
-  copyText: { color: '#fff', fontWeight: 'bold', marginLeft: 6 },
-  dropdownContainer: { marginBottom: 10, width: '60%', alignSelf: 'center' },
-  label: { fontSize: 14, color: '#333', marginBottom: 4 },
+  pickerWrapper: { flex: 1 },
   list: { paddingBottom: 20 },
   card: {
-    backgroundColor: '#32a8c4', padding: 12, borderRadius: 10,
-    width: '23%', marginBottom: 16, alignItems: 'center',
+    backgroundColor: '#32a8c4', padding: 10, borderRadius: 10,
+    width: '15.5%', marginBottom: 12, alignItems: 'center',
   },
-  image: { width: 80, height: 80, borderRadius: 8, marginBottom: 6 },
-  name: { fontSize: 14, fontWeight: 'bold', color: '#fff', marginBottom: 4, textAlign: 'center' },
-  detail: { fontSize: 13, color: '#fff', marginBottom: 4 },
+  image: { width: 70, height: 70, borderRadius: 8, marginBottom: 4 },
+  name: { fontSize: 13, fontWeight: 'bold', color: '#fff', marginBottom: 2, textAlign: 'center' },
+  detail: { fontSize: 12, color: '#fff', marginBottom: 2 },
+  paginationContainer: {
+    flexDirection: 'row', justifyContent: 'center', alignItems: 'center',
+    marginTop: 20, gap: 20
+  },
+  pageButton: {
+    backgroundColor: '#812732', paddingVertical: 8, paddingHorizontal: 16,
+    borderRadius: 8,
+  },
+  disabledButton: {
+    backgroundColor: '#ccc'
+  },
+  pageButtonText: {
+    color: '#fff', fontWeight: 'bold'
+  },
+  pageInfo: {
+    fontSize: 16, color: '#333', fontWeight: 'bold'
+  }
 });
 
 const pickerSelectStyles = {
   inputIOS: {
-    fontSize: 16, paddingVertical: 10, paddingHorizontal: 12,
-    borderWidth: 1, borderColor: '#ccc', borderRadius: 8,
-    color: '#333', paddingRight: 30, backgroundColor: '#fff', marginBottom: 10,
+    fontSize: 18,
+    paddingVertical: 14,
+    paddingHorizontal: 16,
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 10,
+    color: '#333',
+    paddingRight: 30,
+    backgroundColor: '#fff',
+    marginBottom: 10,
   },
   inputAndroid: {
-    fontSize: 16, paddingHorizontal: 12, paddingVertical: 8,
-    borderWidth: 1, borderColor: '#ccc', borderRadius: 8,
-    color: '#333', paddingRight: 30, backgroundColor: '#fff', marginBottom: 10,
+    fontSize: 18,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderWidth: 1,
+    borderColor: '#ccc',
+    borderRadius: 10,
+    color: '#333',
+    paddingRight: 30,
+    backgroundColor: '#fff',
+    marginBottom: 10,
   },
 };

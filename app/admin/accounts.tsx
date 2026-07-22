@@ -50,7 +50,7 @@ export default function AccountsScreen() {
       <Text style={styles.status}>
         👤 {item.status === 'active' ? '🟢 Active' : '🔴 InActive'}
       </Text>
-      <Text style={styles.userCount}>🟢 Active Users: 10</Text> {/* يمكن ربط العدد الحقيقي لاحقاً */}
+      <Text style={styles.userCount}>مستخدمون نشطون: {item.activeUsers ?? 0}</Text>
 
       <TouchableOpacity
         style={styles.infoButton}
