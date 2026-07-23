@@ -1,9 +1,20 @@
 import React, { useEffect, useState } from 'react';
-import {
-  View, Text, TextInput, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, ScrollView,
-} from 'react-native';
+import { View, Text, StyleSheet, Alert, ActivityIndicator, Pressable } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from '../api/axiosInstance';
+import {
+  Screen,
+  PageHeader,
+  Surface,
+  Button,
+  TextField,
+  EmptyState,
+  StatusBadge,
+  colors,
+  space,
+  typography,
+  textStyles,
+} from '../../components/ui';
 
 export default function VouchersScreen() {
   const [list, setList] = useState<any[]>([]);
@@ -50,45 +61,117 @@ export default function VouchersScreen() {
     }
   };
 
-  if (loading) return <ActivityIndicator style={{ marginTop: 40 }} color="#c23a8c" />;
+  if (loading) {
+    return (
+      <Screen scroll={false} contentStyle={styles.center}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </Screen>
+    );
+  }
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>الذمم وسندات القبض/الصرف</Text>
-      <View style={styles.row}>
-        {(['receipt', 'payment'] as const).map((t) => (
-          <TouchableOpacity key={t} style={[styles.chip, type === t && styles.active]} onPress={() => setType(t)}>
-            <Text style={{ color: type === t ? '#fff' : '#333' }}>{t === 'receipt' ? 'قبض' : 'صرف'}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-      <TextInput style={styles.input} placeholder="معرف الطرف" value={party} onChangeText={setParty} />
-      <TextInput style={styles.input} placeholder="المبلغ" value={amount} onChangeText={setAmount} keyboardType="numeric" />
-      <TouchableOpacity style={styles.btn} onPress={create}><Text style={styles.btnText}>حفظ السند</Text></TouchableOpacity>
+    <Screen>
+      <PageHeader
+        title="الذمم وسندات القبض والصرف"
+        subtitle="إدارة السندات وأعمار الديون"
+      />
 
-      <Text style={styles.subtitle}>أعمار الديون (عملاء)</Text>
-      <Text>{JSON.stringify(aging?.buckets || {}, null, 2)}</Text>
-
-      <Text style={styles.subtitle}>السندات</Text>
-      {list.map((v) => (
-        <View key={v._id} style={styles.card}>
-          <Text>{v.number} — {v.type} — {v.amount}</Text>
-          <Text>{v.party?.name}</Text>
+      <Surface style={styles.section}>
+        <View style={styles.row}>
+          {(['receipt', 'payment'] as const).map((t) => (
+            <Pressable
+              key={t}
+              style={[styles.chip, type === t && styles.chipActive]}
+              onPress={() => setType(t)}
+            >
+              <Text style={[styles.chipText, type === t && styles.chipTextActive]}>
+                {t === 'receipt' ? 'قبض' : 'صرف'}
+              </Text>
+            </Pressable>
+          ))}
         </View>
-      ))}
-    </ScrollView>
+        <TextField label="معرف الطرف" value={party} onChangeText={setParty} />
+        <TextField
+          label="المبلغ"
+          value={amount}
+          onChangeText={setAmount}
+          keyboardType="numeric"
+        />
+        <Button title="حفظ السند" onPress={create} />
+      </Surface>
+
+      <Text style={styles.sectionTitle}>أعمار الديون (عملاء)</Text>
+      <Surface style={styles.section}>
+        <Text style={styles.mono}>{JSON.stringify(aging?.buckets || {}, null, 2)}</Text>
+      </Surface>
+
+      <Text style={styles.sectionTitle}>السندات</Text>
+      {list.length === 0 ? (
+        <EmptyState title="لا توجد سندات" />
+      ) : (
+        list.map((v) => (
+          <Surface key={v._id} style={styles.card}>
+            <View style={styles.cardHead}>
+              <Text style={styles.cardTitle}>{v.number}</Text>
+              <StatusBadge
+                active={v.type === 'receipt'}
+                label={v.type === 'receipt' ? 'قبض' : 'صرف'}
+              />
+            </View>
+            <Text style={styles.body}>المبلغ: {v.amount}</Text>
+            <Text style={styles.body}>{v.party?.name}</Text>
+          </Surface>
+        ))
+      )}
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { padding: 16, backgroundColor: '#fff' },
-  title: { fontSize: 22, fontWeight: 'bold', color: '#c23a8c', marginBottom: 12 },
-  subtitle: { fontSize: 16, fontWeight: 'bold', marginTop: 16, marginBottom: 8 },
-  row: { flexDirection: 'row', gap: 8, marginBottom: 8 },
-  chip: { borderWidth: 1, borderColor: '#00aacc', borderRadius: 8, paddingHorizontal: 12, paddingVertical: 8 },
-  active: { backgroundColor: '#50b3c9' },
-  input: { borderWidth: 1, borderColor: '#00aacc', borderRadius: 8, padding: 10, marginBottom: 8 },
-  btn: { backgroundColor: '#c23a8c', padding: 12, borderRadius: 8, alignItems: 'center', marginBottom: 12 },
-  btnText: { color: '#fff', fontWeight: 'bold' },
-  card: { backgroundColor: '#f5f9fb', padding: 10, borderRadius: 8, marginBottom: 6 },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  section: { marginBottom: space.xl },
+  sectionTitle: {
+    ...textStyles.title,
+    fontSize: 18,
+    marginBottom: space.md,
+  },
+  row: { flexDirection: 'row', gap: space.sm, marginBottom: space.lg },
+  chip: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    borderRadius: 8,
+    paddingHorizontal: space.lg,
+    paddingVertical: space.sm,
+  },
+  chipActive: {
+    backgroundColor: colors.brand,
+    borderColor: colors.brand,
+  },
+  chipText: {
+    fontFamily: typography.fontArMd,
+    fontSize: typography.sizeSm,
+    color: colors.text,
+  },
+  chipTextActive: { color: colors.textOnBrand },
+  card: { marginBottom: space.md },
+  cardHead: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: space.sm,
+    gap: space.sm,
+  },
+  cardTitle: {
+    fontFamily: typography.fontArMd,
+    fontSize: typography.sizeMd,
+    color: colors.text,
+    flex: 1,
+  },
+  body: { ...textStyles.subtitle, marginTop: space.xs },
+  mono: {
+    fontFamily: typography.fontSans,
+    fontSize: typography.sizeXs,
+    color: colors.text,
+  },
 });

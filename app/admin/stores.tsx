@@ -1,11 +1,26 @@
 import React, { useEffect, useState } from 'react';
 import {
-  View, Text, StyleSheet, FlatList, TouchableOpacity, Image, ActivityIndicator,
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  ActivityIndicator,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from '../api/axiosInstance';
-import { Ionicons } from '@expo/vector-icons';
+import {
+  Screen,
+  PageHeader,
+  Surface,
+  Button,
+  EmptyState,
+  StatusBadge,
+  colors,
+  space,
+  typography,
+  textStyles,
+} from '../../components/ui';
 
 export default function StoresScreen() {
   const router = useRouter();
@@ -38,65 +53,46 @@ export default function StoresScreen() {
     fetchStores();
   }, []);
 
-  // ✨ داخل renderStoreCard:
-const renderStoreCard = ({ item }: any) => (
-  <View style={styles.card}>
-    <Ionicons name="storefront" size={28} color="#fff" style={{ marginBottom: 10 }} />
-    <Text style={styles.name}>{item.name}</Text>
-    {item.location && <Text style={styles.detail}>📍 {item.location}</Text>}
-    <Text style={styles.detail}>
-      {item.status === 'active' ? '🟢 Active' : '🔴 Inactive'}
-    </Text>
+  const renderStoreCard = ({ item }: any) => (
+    <Surface style={styles.card}>
+      <Text style={styles.name}>{item.name}</Text>
+      {item.location ? <Text style={styles.detail}>{item.location}</Text> : null}
+      <StatusBadge active={item.status === 'active'} />
 
-    {/* زر تفاصيل المتجر متاح للجميع */}
-    <TouchableOpacity
-      style={styles.detailsButton}
-      onPress={() => router.push(`/admin/store/${item._id}`)}
-    >
-      <Text style={styles.detailsText}>View Details</Text>
-    </TouchableOpacity>
-
-    {/* زر التعديل مخصص للأدوار المصرح لها */}
-    {(role === 'AccountOwner' || role === 'GeneralAccountant') && (
-      <TouchableOpacity
-        style={styles.editButton}
-        onPress={() => router.push(`/admin/manage-store/${item._id}`)}
-      >
-        <Text style={styles.editText}>Edit</Text>
-      </TouchableOpacity>
-    )}
-  </View>
-);
-
+      <View style={styles.actions}>
+        <Button
+          title="التفاصيل"
+          variant="secondary"
+          onPress={() => router.push(`/admin/store/${item._id}`)}
+          style={styles.actionBtn}
+        />
+        {(role === 'AccountOwner' || role === 'GeneralAccountant') && (
+          <Button
+            title="تعديل"
+            onPress={() => router.push(`/admin/manage-store/${item._id}`)}
+            style={styles.actionBtn}
+          />
+        )}
+      </View>
+    </Surface>
+  );
 
   return (
-    <View style={styles.container}>
-      {/* Header */}
-            <View style={styles.header}>
-              <View style={styles.locationContainer}>
-                <Ionicons name="location" size={16} color="#000" />
-                <Text style={styles.locationText}>Riyadh, Saudi Arabia 🌤️ 30°</Text>
-              </View>
-              <Text style={styles.dateText}>📅 {new Date().toLocaleDateString('en-GB')} {new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</Text>
-            </View>
-
-
-      {/* Logo */}
-            <Image source={require('../../assets/images/logo.png')} style={styles.logo} resizeMode="contain" />
-            
-      {['AccountOwner', 'GeneralAccountant'].includes(role || '') && (
-        <TouchableOpacity style={styles.addButton} onPress={() => router.push('/admin/create-store')}>
-          <Ionicons name="add-circle-outline" size={18} color="#fff" />
-          <Text style={styles.addText}>Add Store</Text>
-        </TouchableOpacity>
-      )}
+    <Screen scroll={false}>
+      <PageHeader
+        title="المتاجر"
+        subtitle="عرض وإدارة المتاجر"
+        right={
+          ['AccountOwner', 'GeneralAccountant'].includes(role || '') ? (
+            <Button title="إضافة متجر" onPress={() => router.push('/admin/create-store')} />
+          ) : undefined
+        }
+      />
 
       {loading ? (
-        <ActivityIndicator size="large" color="#812732" style={{ marginTop: 40 }} />
+        <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: space.xxl }} />
       ) : stores.length === 0 ? (
-        <Text style={{ textAlign: 'center', marginTop: 30, color: '#888' }}>
-          No stores found.
-        </Text>
+        <EmptyState title="لا توجد متاجر" subtitle="لم يتم العثور على متاجر لعرضها" />
       ) : (
         <FlatList
           data={stores}
@@ -104,106 +100,42 @@ const renderStoreCard = ({ item }: any) => (
           renderItem={renderStoreCard}
           numColumns={3}
           contentContainerStyle={styles.list}
-          columnWrapperStyle={{ justifyContent: 'space-between' }}
+          columnWrapperStyle={styles.row}
+          showsVerticalScrollIndicator={false}
         />
       )}
-    </View>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    padding: 16,
-  },
-  header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: 8,
-  },
-  locationContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-  },
-  locationText: {
-    marginLeft: 4,
-    fontSize: 14,
-    color: '#333',
-  },
-  dateText: {
-    fontSize: 14,
-    color: '#333',
-  },
-  logo: {
-    width: 320,
-    height: 120,
-    alignSelf: 'center',
-    marginVertical: 10,
-  },
-  addButton: {
-    backgroundColor: '#cc4da0',
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    borderRadius: 8,
-    alignSelf: 'flex-end',
-    marginBottom: 10,
-  },
-  addText: {
-    color: '#fff',
-    fontWeight: 'bold',
-    marginLeft: 6,
-  },
   list: {
-    paddingBottom: 20,
+    paddingBottom: space.xxl,
+  },
+  row: {
+    justifyContent: 'space-between',
+    gap: space.md,
   },
   card: {
-    backgroundColor: '#32a8c4',
-    padding: 16,
-    borderRadius: 10,
-    width: '30%',
-    marginBottom: 16,
-    alignItems: 'center',
+    width: '32%',
+    marginBottom: space.lg,
   },
   name: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    color: '#fff',
-    marginBottom: 4,
-    textAlign: 'center',
+    fontFamily: typography.fontArBold,
+    fontSize: typography.sizeMd,
+    color: colors.text,
+    marginBottom: space.xs,
   },
   detail: {
-    fontSize: 13,
-    color: '#fff',
-    marginBottom: 6,
-    textAlign: 'center',
+    ...textStyles.subtitle,
+    fontSize: typography.sizeSm,
+    marginBottom: space.sm,
   },
-  editButton: {
-    backgroundColor: '#fff',
-    paddingVertical: 6,
-    paddingHorizontal: 12,
-    borderRadius: 6,
-    marginTop: 8,
+  actions: {
+    marginTop: space.md,
+    gap: space.sm,
   },
-  editText: {
-    color: '#cc4da0',
-    fontWeight: 'bold',
-    textAlign: 'center',
+  actionBtn: {
+    width: '100%',
   },
-  // ✨ في styles:
-detailsButton: {
-  backgroundColor: '#fff',
-  paddingVertical: 6,
-  paddingHorizontal: 12,
-  borderRadius: 6,
-  marginTop: 6,
-},
-detailsText: {
-  color: '#32a8c4',
-  fontWeight: 'bold',
-  textAlign: 'center',
-},
-
 });

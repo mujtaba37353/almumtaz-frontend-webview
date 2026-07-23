@@ -1,12 +1,23 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Image, StyleSheet, Alert } from 'react-native';
+import { Text, StyleSheet, Alert, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
-import axios from './api/axiosInstance';
 import { Ionicons } from '@expo/vector-icons';
+import axios from './api/axiosInstance';
+import {
+  Screen,
+  Surface,
+  TextField,
+  Button,
+  PageHeader,
+  colors,
+  space,
+  typography,
+} from '../components/ui';
 
 export default function ForgetPasswordScreen() {
   const router = useRouter();
   const [email, setEmail] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const handleResetPassword = async () => {
     if (!email) {
@@ -15,6 +26,7 @@ export default function ForgetPasswordScreen() {
     }
 
     try {
+      setLoading(true);
       const response = await axios.post('/auth/forgot-password', { email });
 
       if (response.status === 200) {
@@ -27,66 +39,51 @@ export default function ForgetPasswordScreen() {
     } catch (error: any) {
       console.error(error);
       Alert.alert('خطأ', error?.response?.data?.message || 'فشل في إرسال الطلب');
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <View style={styles.container}>
-      <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-        <Ionicons name="arrow-back" size={24} color="#c23a8c" />
-      </TouchableOpacity>
+    <Screen contentStyle={styles.wrap}>
+      <Pressable onPress={() => router.back()} style={styles.back}>
+        <Ionicons name="arrow-back" size={22} color={colors.primary} />
+        <Text style={styles.backText}>رجوع</Text>
+      </Pressable>
 
-      <Image source={require('../assets/images/forget-image.png')} style={styles.image} resizeMode="contain" />
+      <PageHeader title="استعادة كلمة المرور" subtitle="أدخل بريدك لإرسال رمز التحقق" />
 
-      <View style={styles.inputContainer}>
-        <Ionicons name="mail-outline" size={20} color="#999" style={styles.icon} />
-        <TextInput
-          placeholder="البريد الإلكتروني"
+      <Surface>
+        <TextField
+          label="البريد الإلكتروني"
+          placeholder="email@example.com"
           value={email}
           onChangeText={setEmail}
           keyboardType="email-address"
           autoCapitalize="none"
-          style={styles.input}
         />
-      </View>
-
-      <TouchableOpacity style={styles.button} onPress={handleResetPassword}>
-        <Text style={styles.buttonText}>إرسال رمز التحقق</Text>
-      </TouchableOpacity>
-    </View>
+        <Button title="إرسال رمز التحقق" onPress={handleResetPassword} loading={loading} />
+      </Surface>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
-    paddingHorizontal: 20,
+  wrap: {
+    maxWidth: 480,
+    width: '100%',
+    alignSelf: 'center',
     justifyContent: 'center',
   },
-  backButton: { position: 'absolute', top: 50, left: 20 },
-  image: { width: '100%', height: 220, alignSelf: 'center', marginBottom: 40 },
-  inputContainer: {
+  back: {
     flexDirection: 'row',
-    alignSelf: 'center',
     alignItems: 'center',
-    width: '80%',
-    maxWidth: 400,
-    borderWidth: 1,
-    borderColor: '#00aacc',
-    borderRadius: 8,
-    paddingHorizontal: 10,
-    marginBottom: 20,
+    gap: space.sm,
+    marginBottom: space.xl,
   },
-  icon: { marginRight: 6 },
-  input: { flex: 1, paddingVertical: 10, fontSize: 16 },
-  button: {
-    width: '80%',
-    maxWidth: 400,
-    backgroundColor: '#c23a8c',
-    paddingVertical: 14,
-    borderRadius: 8,
-    alignSelf: 'center',
+  backText: {
+    fontFamily: typography.fontArMd,
+    color: colors.primary,
+    fontSize: typography.sizeMd,
   },
-  buttonText: { color: '#fff', fontSize: 16, textAlign: 'center', fontWeight: 'bold' },
 });

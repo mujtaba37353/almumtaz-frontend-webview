@@ -1,16 +1,19 @@
 import React, { useEffect, useState } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  Alert,
-  ActivityIndicator,
-} from 'react-native';
+import { View, Text, StyleSheet, Alert, ActivityIndicator, Pressable } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from '../api/axiosInstance';
+import {
+  Screen,
+  PageHeader,
+  Surface,
+  Button,
+  TextField,
+  StatusBadge,
+  colors,
+  space,
+  typography,
+  textStyles,
+} from '../../components/ui';
 
 export default function ZatcaSettingsScreen() {
   const [loading, setLoading] = useState(true);
@@ -96,122 +99,140 @@ export default function ZatcaSettingsScreen() {
 
   if (loading) {
     return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color="#c23a8c" />
-      </View>
+      <Screen scroll={false} contentStyle={styles.center}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </Screen>
     );
   }
 
+  const envLabels: Record<string, string> = {
+    sandbox: 'تجريبي',
+    production: 'إنتاج',
+  };
+
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>ربط ZATCA / Fatoora</Text>
-
-      <View style={styles.card}>
-        <Text>جاهزية البيانات: {status?.zatcaReady ? 'نعم' : 'لا'}</Text>
-        <Text>الفوترة مفعّلة: {status?.einvoicingEnabled ? 'نعم' : 'لا'}</Text>
-        <Text>البيئة: {status?.environment}</Text>
-        <Text>حالة الربط: {status?.onboardingStatus}</Text>
-        <Text>بيانات اعتماد: {status?.hasCredentials ? 'موجودة' : 'غير موجودة'}</Text>
-        {status?.lastError ? <Text style={{ color: 'red' }}>{status.lastError}</Text> : null}
-      </View>
-
-      <Text style={styles.label}>البيئة</Text>
-      <View style={styles.row}>
-        {['sandbox', 'production'].map((env) => (
-          <TouchableOpacity
-            key={env}
-            style={[styles.chip, environment === env && styles.chipActive]}
-            onPress={() => setEnvironment(env)}
-          >
-            <Text style={{ color: environment === env ? '#fff' : '#333' }}>{env}</Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      <Text style={styles.label}>Binary Security Token (CSID)</Text>
-      <TextInput
-        style={styles.input}
-        value={binarySecurityToken}
-        onChangeText={setBinarySecurityToken}
-        placeholder="الصق التوكن هنا"
+    <Screen>
+      <PageHeader
+        title="ربط هيئة الزكاة والضريبة"
+        subtitle="اعتماد فاتورة الإلكترونية وبيئة الربط"
       />
 
-      <Text style={styles.label}>Secret</Text>
-      <TextInput
-        style={styles.input}
-        value={secret}
-        onChangeText={setSecret}
-        placeholder="الصق السر هنا"
-        secureTextEntry
-      />
+      <Surface style={styles.statusCard}>
+        <View style={styles.badgeRow}>
+          <StatusBadge
+            active={!!status?.zatcaReady}
+            label={status?.zatcaReady ? 'جاهز' : 'غير جاهز'}
+          />
+          <StatusBadge
+            active={!!status?.einvoicingEnabled}
+            label={status?.einvoicingEnabled ? 'الفوترة مفعّلة' : 'الفوترة متوقفة'}
+          />
+        </View>
+        <Text style={styles.body}>البيئة: {envLabels[status?.environment] || status?.environment}</Text>
+        <Text style={styles.body}>حالة الربط: {status?.onboardingStatus}</Text>
+        <Text style={styles.body}>
+          بيانات الاعتماد: {status?.hasCredentials ? 'موجودة' : 'غير موجودة'}
+        </Text>
+        {status?.lastError ? (
+          <Text style={styles.error}>{status.lastError}</Text>
+        ) : null}
+      </Surface>
 
-      <TouchableOpacity style={styles.btn} onPress={save}>
-        <Text style={styles.btnText}>حفظ الاعتماد</Text>
-      </TouchableOpacity>
-      <TouchableOpacity
-        style={[styles.btn, styles.secondary]}
-        onPress={async () => {
-          try {
-            const token = await AsyncStorage.getItem('token');
-            const res = await axios.post(
-              '/zatca/generate-csr',
-              {},
-              { headers: { Authorization: `Bearer ${token}` } }
-            );
-            Alert.alert('CSR', res.data.csrPem?.slice(0, 180) + '...');
-            load();
-          } catch (err: any) {
-            Alert.alert('خطأ', err?.response?.data?.message || 'فشل توليد CSR');
-          }
-        }}
-      >
-        <Text style={styles.btnText}>توليد CSR</Text>
-      </TouchableOpacity>
-      <TouchableOpacity style={[styles.btn, styles.secondary]} onPress={compliance}>
-        <Text style={styles.btnText}>تشغيل اختبار الامتثال</Text>
-      </TouchableOpacity>
-      <TouchableOpacity style={[styles.btn, styles.secondary]} onPress={promote}>
-        <Text style={styles.btnText}>الترقية للإنتاج</Text>
-      </TouchableOpacity>
-    </ScrollView>
+      <Surface>
+        <Text style={styles.label}>البيئة</Text>
+        <View style={styles.row}>
+          {['sandbox', 'production'].map((env) => (
+            <Pressable
+              key={env}
+              style={[styles.chip, environment === env && styles.chipActive]}
+              onPress={() => setEnvironment(env)}
+            >
+              <Text style={[styles.chipText, environment === env && styles.chipTextActive]}>
+                {envLabels[env]}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
+
+        <TextField
+          label="رمز الأمان الثنائي (CSID)"
+          value={binarySecurityToken}
+          onChangeText={setBinarySecurityToken}
+          placeholder="الصق التوكن هنا"
+        />
+        <TextField
+          label="السر"
+          value={secret}
+          onChangeText={setSecret}
+          placeholder="الصق السر هنا"
+          secureTextEntry
+        />
+
+        <Button title="حفظ الاعتماد" onPress={save} />
+        <Button
+          title="توليد CSR"
+          variant="secondary"
+          style={{ marginTop: space.sm }}
+          onPress={async () => {
+            try {
+              const token = await AsyncStorage.getItem('token');
+              const res = await axios.post(
+                '/zatca/generate-csr',
+                {},
+                { headers: { Authorization: `Bearer ${token}` } }
+              );
+              Alert.alert('CSR', res.data.csrPem?.slice(0, 180) + '...');
+              load();
+            } catch (err: any) {
+              Alert.alert('خطأ', err?.response?.data?.message || 'فشل توليد CSR');
+            }
+          }}
+        />
+        <Button
+          title="تشغيل اختبار الامتثال"
+          variant="secondary"
+          onPress={compliance}
+          style={{ marginTop: space.sm }}
+        />
+        <Button
+          title="الترقية للإنتاج"
+          variant="secondary"
+          onPress={promote}
+          style={{ marginTop: space.sm }}
+        />
+      </Surface>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { padding: 20, backgroundColor: '#fff' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  title: { fontSize: 22, fontWeight: 'bold', color: '#c23a8c', marginBottom: 16 },
-  card: {
-    backgroundColor: '#f5f9fb',
-    padding: 14,
-    borderRadius: 12,
-    marginBottom: 16,
-    gap: 6,
+  statusCard: { marginBottom: space.xl, gap: space.sm },
+  badgeRow: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm, marginBottom: space.sm },
+  body: { ...textStyles.subtitle },
+  error: {
+    ...textStyles.subtitle,
+    color: colors.danger,
+    marginTop: space.sm,
   },
-  label: { marginTop: 10, marginBottom: 4 },
-  input: {
-    borderWidth: 1,
-    borderColor: '#00aacc',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-  },
-  row: { flexDirection: 'row', gap: 8 },
+  label: { ...textStyles.label, marginBottom: space.sm },
+  row: { flexDirection: 'row', gap: space.sm, marginBottom: space.lg },
   chip: {
     borderWidth: 1,
-    borderColor: '#00aacc',
+    borderColor: colors.border,
+    backgroundColor: colors.canvasAlt,
     borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingHorizontal: space.md,
+    paddingVertical: space.sm,
   },
-  chipActive: { backgroundColor: '#50b3c9', borderColor: '#50b3c9' },
-  btn: {
-    backgroundColor: '#c23a8c',
-    padding: 14,
-    borderRadius: 8,
-    marginTop: 14,
-    alignItems: 'center',
+  chipActive: {
+    backgroundColor: colors.brand,
+    borderColor: colors.brand,
   },
-  secondary: { backgroundColor: '#50b3c9' },
-  btnText: { color: '#fff', fontWeight: 'bold' },
+  chipText: {
+    fontFamily: typography.fontArMd,
+    fontSize: typography.sizeSm,
+    color: colors.text,
+  },
+  chipTextActive: { color: colors.textOnBrand },
 });

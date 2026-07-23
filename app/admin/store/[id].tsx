@@ -1,14 +1,30 @@
-// ✅ نسخة محسنة من صفحة المتجر: عرض المنتجات بشكل كروت (6 في الصف) + دعم التصفح والفلترة بأزرار واضحة
-
 import React, { useEffect, useState } from 'react';
 import {
-  View, Text, StyleSheet, ScrollView, ActivityIndicator, TouchableOpacity,
-  Image, FlatList, TextInput, Platform
+  View,
+  Text,
+  StyleSheet,
+  ActivityIndicator,
+  Pressable,
+  Image,
+  FlatList,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from '../../api/axiosInstance';
 import { Ionicons } from '@expo/vector-icons';
+import {
+  Screen,
+  Surface,
+  TextField,
+  PageHeader,
+  StatusBadge,
+  EmptyState,
+  Button,
+  colors,
+  space,
+  typography,
+  textStyles,
+} from '../../../components/ui';
 
 export default function StoreDetailsScreen() {
   const { id } = useLocalSearchParams();
@@ -61,7 +77,7 @@ export default function StoreDetailsScreen() {
 
   useEffect(() => {
     const lowerSearch = searchTerm.toLowerCase();
-    const filtered = products.filter(p => p.name?.toLowerCase().includes(lowerSearch));
+    const filtered = products.filter((p) => p.name?.toLowerCase().includes(lowerSearch));
     setFilteredProducts(filtered);
     setPage(1);
   }, [searchTerm, products]);
@@ -79,7 +95,7 @@ export default function StoreDetailsScreen() {
       : item.image;
 
     return (
-      <TouchableOpacity
+      <Pressable
         style={styles.card}
         onPress={() => router.push(`/admin/manage-product/${item._id}`)}
       >
@@ -87,110 +103,187 @@ export default function StoreDetailsScreen() {
           source={imageUrl ? { uri: imageUrl } : require('../../../assets/images/logo.png')}
           style={styles.image}
         />
-        <Text style={styles.name}>{item.name}</Text>
-        <Text style={styles.detail}>💵 {item.price} SAR</Text>
-      </TouchableOpacity>
+        <Text style={styles.name} numberOfLines={2}>
+          {item.name}
+        </Text>
+        <Text style={styles.detail}>{item.price} SAR</Text>
+      </Pressable>
     );
   };
 
   if (loading) {
-    return <ActivityIndicator size="large" color="#812732" style={{ marginTop: 50 }} />;
+    return (
+      <Screen scroll={false} contentStyle={styles.centered}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </Screen>
+    );
   }
 
   if (!store) {
     return (
-      <View style={styles.centered}>
-        <Text>Store not found</Text>
-        <TouchableOpacity onPress={() => router.back()}>
-          <Text style={styles.backText}>⬅️ Back</Text>
-        </TouchableOpacity>
-      </View>
+      <Screen scroll={false} contentStyle={styles.centered}>
+        <EmptyState title="Store not found" />
+        <Button title="رجوع" variant="ghost" onPress={() => router.back()} />
+      </Screen>
     );
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-        <Ionicons name="arrow-back" size={24} color="#c23a8c" />
-      </TouchableOpacity>
-      <Text style={styles.title}>{store.name}</Text>
-      {store.location && <Text style={styles.subtitle}>📍 {store.location}</Text>}
-      <Text style={styles.subtitle}>🔧 Status: {store.status === 'active' ? '🟢 Active' : '🔴 Inactive'}</Text>
+    <Screen contentStyle={styles.wrap}>
+      <Pressable onPress={() => router.back()} style={styles.back}>
+        <Ionicons name="arrow-back" size={22} color={colors.primary} />
+        <Text style={styles.backText}>رجوع</Text>
+      </Pressable>
 
-      <Text style={styles.sectionTitle}>Users in this Store</Text>
-      {users.length > 0 ? users.map((user) => (
-        <View key={user._id} style={styles.userBox}>
-          <Text style={styles.itemText}>👤 {user.name} ({user.role})</Text>
-          <TouchableOpacity onPress={() => router.push(`/admin/user-info/${user._id}`)}>
-            <Text style={styles.viewButton}>عرض التفاصيل</Text>
-          </TouchableOpacity>
-        </View>
-      )) : (
-        <Text style={styles.emptyText}>No users found.</Text>
+      <PageHeader
+        title={store.name}
+        subtitle={store.location || undefined}
+        right={<StatusBadge active={store.status === 'active'} />}
+      />
+
+      <Text style={styles.sectionTitle}>المستخدمون في هذا المتجر</Text>
+      {users.length > 0 ? (
+        users.map((user) => (
+          <Surface key={user._id} style={styles.userBox}>
+            <Text style={styles.itemText}>
+              {user.name} ({user.role})
+            </Text>
+            <Pressable onPress={() => router.push(`/admin/user-info/${user._id}`)}>
+              <Text style={styles.viewButton}>عرض التفاصيل</Text>
+            </Pressable>
+          </Surface>
+        ))
+      ) : (
+        <EmptyState title="لا يوجد مستخدمون" />
       )}
 
-      <TextInput
+      <TextField
+        label="بحث"
         placeholder="بحث عن منتج..."
         value={searchTerm}
         onChangeText={setSearchTerm}
-        style={styles.searchInput}
+        containerStyle={{ marginTop: space.lg }}
       />
 
-      <Text style={styles.sectionTitle}>Products in this Store</Text>
+      <Text style={styles.sectionTitle}>منتجات المتجر</Text>
       {paginatedProducts.length > 0 ? (
         <FlatList
           data={paginatedProducts}
           keyExtractor={(item) => item._id}
           renderItem={renderProduct}
-          numColumns={6}
+          numColumns={3}
+          scrollEnabled={false}
           contentContainerStyle={styles.list}
-          columnWrapperStyle={{ justifyContent: 'space-between' }}
+          columnWrapperStyle={{ gap: space.md }}
         />
       ) : (
-        <Text style={styles.emptyText}>No products found.</Text>
+        <EmptyState title="لا توجد منتجات" />
       )}
 
       {filteredProducts.length > PRODUCTS_PER_PAGE && (
         <View style={styles.pagination}>
-          <TouchableOpacity disabled={page === 1} onPress={() => setPage(page - 1)}>
-            <Text style={[styles.pageButton, page === 1 && styles.disabledButton]}>⬅ السابق</Text>
-          </TouchableOpacity>
-          <Text style={styles.pageText}>الصفحة {page} من {totalPages}</Text>
-          <TouchableOpacity disabled={page === totalPages} onPress={() => setPage(page + 1)}>
-            <Text style={[styles.pageButton, page === totalPages && styles.disabledButton]}>التالي ➡</Text>
-          </TouchableOpacity>
+          <Pressable disabled={page === 1} onPress={() => setPage(page - 1)}>
+            <Text style={[styles.pageButton, page === 1 && styles.disabledButton]}>السابق</Text>
+          </Pressable>
+          <Text style={styles.pageText}>
+            الصفحة {page} من {totalPages}
+          </Text>
+          <Pressable disabled={page === totalPages} onPress={() => setPage(page + 1)}>
+            <Text style={[styles.pageButton, page === totalPages && styles.disabledButton]}>التالي</Text>
+          </Pressable>
         </View>
       )}
-    </ScrollView>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { padding: 20, backgroundColor: '#fff' },
-  centered: { flex: 1, justifyContent: 'center', alignItems: 'center', padding: 20 },
-  backButton: { alignSelf: 'flex-start' },
-  backText: { color: '#812732', marginTop: 10 },
-  title: { fontSize: 24, fontWeight: 'bold', color: '#812732', marginBottom: 10, textAlign: 'center' },
-  subtitle: { fontSize: 16, color: '#333', marginBottom: 6, textAlign: 'center' },
-  sectionTitle: { marginTop: 24, fontSize: 18, fontWeight: 'bold', color: '#c23a8c', marginBottom: 12, textAlign: 'center' },
-  itemText: { fontSize: 15, color: '#444', marginBottom: 4, textAlign: 'center' },
-  emptyText: { color: '#999', fontStyle: 'italic', textAlign: 'center' },
-  viewButton: { color: '#32a8c4', fontWeight: 'bold', marginTop: 4, textAlign: 'center' },
-  userBox: { marginBottom: 10, paddingBottom: 8, borderBottomWidth: 1, borderBottomColor: '#eee' },
-  productBox: { marginBottom: 12, paddingBottom: 8, borderBottomWidth: 1, borderBottomColor: '#ddd' },
-  searchInput: { borderWidth: 1, borderColor: '#ccc', borderRadius: 8, padding: 10, marginVertical: 16 },
-  list: { paddingBottom: 20 },
+  wrap: {
+    maxWidth: 960,
+    width: '100%',
+    alignSelf: 'center',
+  },
+  centered: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  back: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.sm,
+    marginBottom: space.xl,
+  },
+  backText: {
+    fontFamily: typography.fontArMd,
+    color: colors.primary,
+    fontSize: typography.sizeMd,
+  },
+  sectionTitle: {
+    ...textStyles.title,
+    fontSize: typography.sizeLg,
+    marginTop: space.xl,
+    marginBottom: space.md,
+  },
+  itemText: {
+    ...textStyles.body,
+  },
+  viewButton: {
+    fontFamily: typography.fontArMd,
+    color: colors.brand,
+    marginTop: space.sm,
+  },
+  userBox: {
+    marginBottom: space.md,
+  },
+  list: {
+    paddingBottom: space.lg,
+  },
   card: {
-    backgroundColor: '#32a8c4', padding: 10, borderRadius: 10,
-    width: '15.5%', marginBottom: 12, alignItems: 'center'
+    flex: 1,
+    backgroundColor: colors.surface,
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 12,
+    padding: space.md,
+    marginBottom: space.md,
+    alignItems: 'center',
+    maxWidth: '32%',
   },
-  image: { width: 70, height: 70, borderRadius: 8, marginBottom: 4 },
-  name: { fontSize: 13, fontWeight: 'bold', color: '#fff', marginBottom: 2, textAlign: 'center' },
-  detail: { fontSize: 12, color: '#fff', marginBottom: 2 },
+  image: {
+    width: 72,
+    height: 72,
+    borderRadius: 8,
+    marginBottom: space.sm,
+  },
+  name: {
+    fontFamily: typography.fontArMd,
+    fontSize: typography.sizeSm,
+    color: colors.text,
+    marginBottom: space.xs,
+    textAlign: 'center',
+  },
+  detail: {
+    fontFamily: typography.fontSansMd,
+    fontSize: typography.sizeXs,
+    color: colors.brandDeep,
+  },
   pagination: {
-    flexDirection: 'row', justifyContent: 'center', alignItems: 'center', gap: 20, marginTop: 16,
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    gap: space.xl,
+    marginTop: space.lg,
   },
-  pageButton: { color: '#812732', fontWeight: 'bold', fontSize: 16 },
-  disabledButton: { color: '#ccc' },
-  pageText: { fontSize: 16, color: '#333' },
+  pageButton: {
+    fontFamily: typography.fontArMd,
+    color: colors.primary,
+    fontSize: typography.sizeMd,
+  },
+  disabledButton: {
+    color: colors.textMuted,
+  },
+  pageText: {
+    ...textStyles.body,
+  },
 });

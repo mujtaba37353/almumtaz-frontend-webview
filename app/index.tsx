@@ -1,7 +1,8 @@
 import React, { useEffect } from 'react';
-import { View, Image, StyleSheet, Dimensions, I18nManager } from 'react-native';
+import { View, Image, StyleSheet, Dimensions, I18nManager, Text } from 'react-native';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { LinearGradientFallback, colors, typography, space } from '../components/ui';
 
 I18nManager.allowRTL(true);
 
@@ -31,31 +32,47 @@ export default function SplashScreen() {
         /* fall through */
       }
       router.replace('/login');
-    }, 1500);
+    }, 1400);
 
     return () => clearTimeout(timeout);
   }, [router]);
 
   return (
-    <View style={styles.container}>
+    <LinearGradientFallback style={styles.container} colors={[colors.canvas, colors.canvasAlt]}>
       <Image
         source={require('../assets/images/logo.png')}
         style={styles.logo}
         resizeMode="contain"
       />
-    </View>
+      <Text style={styles.brand}>الممتاز</Text>
+      <View style={styles.bar} />
+    </LinearGradientFallback>
   );
 }
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
     alignItems: 'center',
     justifyContent: 'center',
   },
   logo: {
-    width: Dimensions.get('window').width * 0.7,
-    height: Dimensions.get('window').width * 0.7,
+    width: Dimensions.get('window').width * 0.55,
+    height: Dimensions.get('window').width * 0.55,
+    maxWidth: 280,
+    maxHeight: 280,
+  },
+  brand: {
+    fontFamily: typography.fontArBold,
+    fontSize: typography.sizeXl,
+    color: colors.brandDeep,
+    marginTop: space.md,
+  },
+  bar: {
+    marginTop: space.lg,
+    width: 64,
+    height: 3,
+    borderRadius: 2,
+    backgroundColor: colors.primary,
   },
 });

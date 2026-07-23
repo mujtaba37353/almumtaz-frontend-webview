@@ -1,19 +1,22 @@
 import React, { useEffect, useState } from 'react';
+import { View, Text, StyleSheet, ActivityIndicator, Pressable, Image } from 'react-native';
 import { useRouter } from 'expo-router';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  Image,
-  ActivityIndicator,
-} from 'react-native';
 import axios from './api/axiosInstance';
+import {
+  Screen,
+  PageHeader,
+  Surface,
+  Button,
+  EmptyState,
+  colors,
+  space,
+  typography,
+  textStyles,
+} from '../components/ui';
 
 export default function SubscriptionsPage() {
   const router = useRouter();
-  const [subscriptions, setSubscriptions] = useState([]);
+  const [subscriptions, setSubscriptions] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -23,240 +26,135 @@ export default function SubscriptionsPage() {
         const activeSubscriptions = res.data.filter((sub: any) => sub.active === true);
         setSubscriptions(activeSubscriptions);
       })
-      .catch((err) => {
-        console.error('Error loading subscriptions', err);
-      })
+      .catch((err) => console.error('Error loading subscriptions', err))
       .finally(() => setLoading(false));
   }, []);
 
   if (loading) {
     return (
-      <View style={{ flex: 1, justifyContent: 'center', alignItems: 'center' }}>
-        <ActivityIndicator size="large" color="#812732" />
-        <Text>جارٍ تحميل الاشتراكات...</Text>
-      </View>
+      <Screen scroll={false} contentStyle={styles.loading}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={styles.loadingText}>جارٍ تحميل الاشتراكات...</Text>
+      </Screen>
     );
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
+    <Screen>
       <View style={styles.topBar}>
-        <Image source={require('../assets/images/logo.png')} style={styles.headerLogo} />
-        <TouchableOpacity onPress={() => router.push('/login')}>
+        <Image source={require('../assets/images/logo.png')} style={styles.headerLogo} resizeMode="contain" />
+        <Pressable onPress={() => router.push('/login')}>
           <Text style={styles.signInText}>
-            Already have an account? <Text style={styles.signInLink}>Sign in</Text>
+            لديك حساب؟ <Text style={styles.signInLink}>تسجيل الدخول</Text>
           </Text>
-        </TouchableOpacity>
+        </Pressable>
       </View>
 
-      <Text style={styles.title}>Subscriptions</Text>
-      <Text style={styles.description}>
-        Choose the right plan to get started. All plans come with great support and tools to help you grow.
-      </Text>
+      <PageHeader
+        title="اختر باقة الاشتراك"
+        subtitle="خطط مرنة لإدارة متاجرك والفوترة الإلكترونية"
+      />
 
-      <View style={styles.cardsContainer}>
-        {subscriptions.map((item) => (
-          <View
-            key={item._id}
-            style={[styles.card, item.name === 'Diamond' && styles.diamondCard]}
-          >
-            {item.name === 'Diamond' && (
-              <Text style={styles.mostPopular}>MOST POPULAR</Text>
-            )}
-
-            <Text style={item.name === 'Diamond' ? styles.priceBig : styles.price}>
-              {item.monthlyPrice} SAR <Text style={styles.period}>/monthly</Text>
-            </Text>
-            <Text style={item.name === 'Diamond' ? styles.priceBig : styles.price}>
-              {item.yearlyPrice} SAR <Text style={styles.period}>/yearly</Text>
-            </Text>
-
-            <Text style={item.name === 'Diamond' ? styles.planNameWhite : styles.planName}>
-              {item.name}
-            </Text>
-            <Text style={item.name === 'Diamond' ? styles.planDescWhite : styles.planDesc}>
-              {item.description || 'Perfect for scaling your business.'}
-            </Text>
-
-            <Text style={item.name === 'Diamond' ? styles.bulletWhite : styles.bullet}>
-              ✅ Users: {item.allowedUsers}
-            </Text>
-            <Text style={item.name === 'Diamond' ? styles.bulletWhite : styles.bullet}>
-              ✅ Stores: {item.allowedStores}
-            </Text>
-            <Text style={item.name === 'Diamond' ? styles.bulletWhite : styles.bullet}>
-              ✅ Products: {item.allowedProducts}
-            </Text>
-            <Text style={item.name === 'Diamond' ? styles.bulletWhite : styles.bullet}>
-              ✅ Type: {item.type}
-            </Text>
-
-            <TouchableOpacity
-              style={item.name === 'Diamond' ? styles.seeMoreWhite : styles.seeMore}
-              onPress={() => router.push(`/subscription/${item._id}`)}
-            >
-              <Text style={{ color: item.name === 'Diamond' ? '#c23a8c' : '#fff', fontWeight: 'bold' }}>
-                See More
+      {subscriptions.length === 0 ? (
+        <EmptyState title="لا توجد باقات متاحة حالياً" />
+      ) : (
+        <View style={styles.grid}>
+          {subscriptions.map((item) => (
+            <Surface key={item._id} style={styles.card}>
+              <Text style={styles.planName}>{item.name}</Text>
+              <Text style={styles.price}>
+                {item.monthlyPrice} ر.س
+                <Text style={styles.period}> / شهرياً</Text>
               </Text>
-            </TouchableOpacity>
-
-
-            <TouchableOpacity
-              style={styles.enroll}
-              onPress={() => router.push(`/create-account?subscriptionId=${item._id}`)}
-            >
-              <Text style={styles.enrollText}>Enroll Now</Text>
-            </TouchableOpacity>
-          </View>
-        ))}
-      </View>
-    </ScrollView>
+              <Text style={styles.priceYear}>
+                {item.yearlyPrice} ر.س
+                <Text style={styles.period}> / سنوياً</Text>
+              </Text>
+              <Text style={styles.meta}>مستخدمون: {item.allowedUsers}</Text>
+              <Text style={styles.meta}>متاجر: {item.allowedStores}</Text>
+              <Text style={styles.meta}>منتجات: {item.allowedProducts}</Text>
+              <Button
+                title="التفاصيل"
+                variant="secondary"
+                onPress={() => router.push(`/subscription/${item._id}`)}
+                style={{ marginTop: space.md }}
+              />
+              <Button
+                title="الاشتراك الآن"
+                onPress={() => router.push(`/create-account?subscriptionId=${item._id}`)}
+                style={{ marginTop: space.sm }}
+              />
+            </Surface>
+          ))}
+        </View>
+      )}
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    padding: 20,
-    backgroundColor: '#fdfafa',
+  loading: {
+    justifyContent: 'center',
     alignItems: 'center',
   },
+  loadingText: {
+    ...textStyles.subtitle,
+    marginTop: space.md,
+  },
   topBar: {
-    width: '100%',
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    backgroundColor: '#f5f5f5',
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
+    marginBottom: space.xl,
   },
   headerLogo: {
     width: 120,
-    height: 40,
-    resizeMode: 'contain',
+    height: 48,
   },
   signInText: {
-    fontSize: 14,
-    color: '#666',
+    fontFamily: typography.fontAr,
+    color: colors.textMuted,
+    fontSize: typography.sizeSm,
   },
   signInLink: {
-    fontSize: 16,
-    color: '#c23a8c',
-    fontWeight: 'bold',
+    fontFamily: typography.fontArBold,
+    color: colors.primary,
   },
-  title: {
-    fontSize: 26,
-    color: '#c23a8c',
-    fontWeight: 'bold',
-    marginTop: 10,
-  },
-  description: {
-    fontSize: 16,
-    textAlign: 'center',
-    marginVertical: 10,
-    color: '#666',
-    maxWidth: 600,
-  },
-  cardsContainer: {
+  grid: {
     flexDirection: 'row',
     flexWrap: 'wrap',
-    gap: 20,
-    justifyContent: 'center',
-    marginTop: 20,
+    gap: space.lg,
   },
   card: {
-    backgroundColor: '#fff',
-    borderRadius: 16,
-    padding: 16,
-    width: 250,
-    shadowColor: '#aaa',
-    shadowOpacity: 0.3,
-    shadowRadius: 10,
-    elevation: 3,
-  },
-  price: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    color: '#00aacc',
-  },
-  priceBig: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#fff',
-  },
-  period: {
-    fontSize: 14,
-    color: '#888',
+    minWidth: 260,
+    flexGrow: 1,
+    flexBasis: 280,
+    maxWidth: 360,
   },
   planName: {
-    marginTop: 10,
-    fontWeight: 'bold',
-    fontSize: 18,
-    color: '#444',
+    fontFamily: typography.fontArBold,
+    fontSize: typography.sizeLg,
+    color: colors.brandDeep,
+    marginBottom: space.sm,
   },
-  planDesc: {
-    color: '#777',
-    marginBottom: 10,
+  price: {
+    fontFamily: typography.fontSansBold,
+    fontSize: typography.sizeXl,
+    color: colors.text,
   },
-  bullet: {
-    fontSize: 14,
-    color: '#444',
-    marginVertical: 2,
+  priceYear: {
+    fontFamily: typography.fontSansMd,
+    fontSize: typography.sizeMd,
+    color: colors.textMuted,
+    marginBottom: space.md,
   },
-  seeMore: {
-    marginTop: 10,
-    backgroundColor: '#a3dbe8',
-    padding: 10,
-    borderRadius: 8,
-    alignItems: 'center',
+  period: {
+    fontFamily: typography.fontAr,
+    fontSize: typography.sizeSm,
+    color: colors.textMuted,
   },
-  enroll: {
-    marginTop: 10,
-    backgroundColor: '#c23a8c',
-    padding: 10,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  enrollText: {
-    color: '#fff',
-    fontWeight: 'bold',
-  },
-  // Diamond Styling
-  diamondCard: {
-    backgroundColor: '#50b3c9',
-  },
-  planNameWhite: {
-    marginTop: 10,
-    fontWeight: 'bold',
-    fontSize: 18,
-    color: '#fff',
-  },
-  planDescWhite: {
-    color: '#eee',
-    marginBottom: 10,
-  },
-  bulletWhite: {
-    fontSize: 14,
-    color: '#fff',
-    marginVertical: 2,
-  },
-  seeMoreWhite: {
-    marginTop: 10,
-    backgroundColor: '#fff',
-    padding: 10,
-    borderRadius: 8,
-    alignItems: 'center',
-  },
-  mostPopular: {
-    alignSelf: 'flex-end',
-    backgroundColor: '#fff',
-    color: '#50b3c9',
-    paddingHorizontal: 10,
-    paddingVertical: 2,
-    fontSize: 12,
-    fontWeight: 'bold',
-    borderRadius: 8,
-    marginBottom: 5,
+  meta: {
+    ...textStyles.body,
+    marginTop: 2,
   },
 });

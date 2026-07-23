@@ -1,13 +1,28 @@
 import React, { useEffect, useState } from 'react';
 import {
-  View, Text, StyleSheet, TouchableOpacity, ActivityIndicator, FlatList, Platform, Dimensions
+  View,
+  Text,
+  StyleSheet,
+  ActivityIndicator,
+  FlatList,
+  Platform,
 } from 'react-native';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from '../api/axiosInstance';
-import { Ionicons } from '@expo/vector-icons';
 import RNPickerSelect from 'react-native-picker-select';
-
+import {
+  Screen,
+  PageHeader,
+  Surface,
+  Button,
+  EmptyState,
+  StatusBadge,
+  colors,
+  space,
+  typography,
+  textStyles,
+} from '../../components/ui';
 
 export default function SalesScreen() {
   const [sessions, setSessions] = useState<any[]>([]);
@@ -24,44 +39,43 @@ export default function SalesScreen() {
   const router = useRouter();
 
   const fetchSessions = async () => {
-  try {
-    setLoading(true);
-    setErrorMessage(null);
-    
-    const token = await AsyncStorage.getItem('token');
-    const profileRes = await axios.get('/users/profile', {
-      headers: { Authorization: `Bearer ${token}` },
-    });
+    try {
+      setLoading(true);
+      setErrorMessage(null);
 
-    const user = profileRes.data;
-    setRole(user.role);
-    setUserId(user._id);
-    setStoreId(user.store?._id || null);
-
-    // فقط مالك الحساب والمحاسب العام يمكنهم اختيار متجر
-    if (["AccountOwner", "GeneralAccountant"].includes(user.role)) {
-      const storesRes = await axios.get('/stores', {
+      const token = await AsyncStorage.getItem('token');
+      const profileRes = await axios.get('/users/profile', {
         headers: { Authorization: `Bearer ${token}` },
       });
-      setStores(storesRes.data);
+
+      const user = profileRes.data;
+      setRole(user.role);
+      setUserId(user._id);
+      setStoreId(user.store?._id || null);
+
+      // فقط مالك الحساب والمحاسب العام يمكنهم اختيار متجر
+      if (['AccountOwner', 'GeneralAccountant'].includes(user.role)) {
+        const storesRes = await axios.get('/stores', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setStores(storesRes.data);
+      }
+
+      // ✅ استخدام الراوت الموحد لجميع الأدوار
+      const res = await axios.get('/sessions/all', {
+        headers: { Authorization: `Bearer ${token}` },
+      });
+
+      setAllSessions(res.data);
+      const filtered = applySessionFilter(res.data);
+      setSessions(filtered);
+    } catch (err) {
+      console.error('Error fetching sessions:', err);
+      setErrorMessage('فشل في تحميل الجلسات.');
+    } finally {
+      setLoading(false);
     }
-
-    // ✅ استخدام الراوت الموحد لجميع الأدوار
-    const res = await axios.get('/sessions/all', {
-      headers: { Authorization: `Bearer ${token}` },
-    });
-
-    setAllSessions(res.data);
-    const filtered = applySessionFilter(res.data);
-    setSessions(filtered);
-  } catch (err) {
-    console.error('Error fetching sessions:', err);
-    setErrorMessage('فشل في تحميل الجلسات.');
-  } finally {
-    setLoading(false);
-  }
-};
-
+  };
 
   const applySessionFilter = (sessionsList: any[]) => {
     const now = new Date().getTime();
@@ -108,14 +122,24 @@ export default function SalesScreen() {
     router.push(`/admin/create-session`);
   };
 
+  const canCreate =
+    (['StoreAdmin', 'StoreAccountant', 'Cashier'].includes(role || '') && storeId) ||
+    role === 'AccountOwner' ||
+    role === 'GeneralAccountant';
+
   const renderCard = ({ item: session }: any) => {
     const isMySession = session.user?._id === userId;
-    const canOpen = ['AccountOwner', 'GeneralAccountant', 'StoreAdmin', 'StoreAccountant'].includes(role || '') || (role === 'Cashier' && isMySession);
+    const canOpen =
+      ['AccountOwner', 'GeneralAccountant', 'StoreAdmin', 'StoreAccountant'].includes(role || '') ||
+      (role === 'Cashier' && isMySession);
 
     return (
-      <View style={styles.card}>
+      <Surface style={styles.card}>
         <Text style={styles.cardTitle}>جلسة #{session._id.slice(-5)}</Text>
-        <Text style={styles.status}>الحالة: {session.isOpen ? '🟢 مفتوحة' : '🔴 مغلقة'}</Text>
+        <StatusBadge
+          active={!!session.isOpen}
+          label={session.isOpen ? 'مفتوحة' : 'مغلقة'}
+        />
         {['AccountOwner', 'GeneralAccountant'].includes(role || '') && (
           <Text style={styles.meta}>المتجر: {session.store?.name}</Text>
         )}
@@ -123,47 +147,40 @@ export default function SalesScreen() {
           المستخدم: {session.user.name ?? 'غير معروف (قد يكون محذوف)'}
         </Text>
 
-
         {canOpen && (
-          <TouchableOpacity
-            style={styles.manageButton}
+          <Button
+            title="رؤية الجلسة"
+            variant="secondary"
             onPress={() => router.push(`/manage-session/${session._id}`)}
-          >
-            <Text style={styles.manageText}>رؤية الجلسة</Text>
-          </TouchableOpacity>
+            style={{ marginTop: space.md }}
+          />
         )}
-      </View>
+      </Surface>
     );
   };
 
   return (
-    <View style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>الجلسات الحالية</Text>
-        {(
-            (['StoreAdmin', 'StoreAccountant', 'Cashier'].includes(role || '') && storeId) ||
-            role === 'AccountOwner' || role === 'GeneralAccountant'
-          ) && (
-            <TouchableOpacity style={styles.createButton} onPress={handleCreateSession}>
-              <Ionicons name="add-circle-outline" size={18} color="#fff" />
-              <Text style={styles.createText}>إنشاء جلسة</Text>
-            </TouchableOpacity>
-          )}
+    <Screen scroll={false} contentStyle={styles.container}>
+      <PageHeader
+        title="الجلسات الحالية"
+        subtitle="إدارة جلسات البيع والفلاتر"
+        right={
+          canCreate ? (
+            <Button title="إنشاء جلسة" onPress={handleCreateSession} style={styles.createBtn} />
+          ) : null
+        }
+      />
 
-
-      </View>
-
-      {/* فلترة حسب حالة الجلسة */}
       <View style={styles.dropdownContainer}>
         {Platform.OS === 'web' ? (
           <select
             value={sessionStatusFilter}
             onChange={(e) => setSessionStatusFilter(e.target.value as 'all' | 'open' | 'closed')}
-            style={styles.select}
+            style={styles.select as any}
           >
             <option value="all">جميع الجلسات</option>
-            <option value="open">الجلسات المفتوحة 🟢</option>
-            <option value="closed">الجلسات المغلقة 🔴</option>
+            <option value="open">الجلسات المفتوحة</option>
+            <option value="closed">الجلسات المغلقة</option>
           </select>
         ) : (
           <RNPickerSelect
@@ -172,26 +189,27 @@ export default function SalesScreen() {
             placeholder={{ label: 'تصفية حسب الحالة', value: 'all' }}
             items={[
               { label: 'جميع الجلسات', value: 'all' },
-              { label: 'الجلسات المفتوحة 🟢', value: 'open' },
-              { label: 'الجلسات المغلقة 🔴', value: 'closed' },
+              { label: 'الجلسات المفتوحة', value: 'open' },
+              { label: 'الجلسات المغلقة', value: 'closed' },
             ]}
             style={pickerSelectStyles}
           />
         )}
       </View>
 
-      {/* فلترة حسب المتجر */}
-      {["AccountOwner", "GeneralAccountant"].includes(role || '') && stores.length > 0 && (
+      {['AccountOwner', 'GeneralAccountant'].includes(role || '') && stores.length > 0 && (
         <View style={styles.dropdownContainer}>
           {Platform.OS === 'web' ? (
             <select
               value={selectedStoreId || ''}
               onChange={(e) => setSelectedStoreId(e.target.value || null)}
-              style={styles.select}
+              style={styles.select as any}
             >
               <option value="">فلترة حسب المتجر</option>
               {stores.map((store) => (
-                <option key={store._id} value={store._id}>{store.name}</option>
+                <option key={store._id} value={store._id}>
+                  {store.name}
+                </option>
               ))}
             </select>
           ) : (
@@ -209,25 +227,22 @@ export default function SalesScreen() {
         </View>
       )}
 
-      {/* زر إعادة تعيين */}
-      <TouchableOpacity
-        style={styles.resetButton}
+      <Button
+        title="إعادة تعيين الفلاتر"
+        variant="ghost"
         onPress={resetFilters}
-      >
-        <Ionicons name="refresh-circle" size={18} color="#fff" />
-        <Text style={styles.resetText}>إعادة تعيين الفلاتر</Text>
-      </TouchableOpacity>
+        style={styles.resetBtn}
+      />
 
-      {errorMessage && (
-        <Text style={styles.errorText}>{errorMessage}</Text>
-      )}
+      {errorMessage && <Text style={styles.errorText}>{errorMessage}</Text>}
 
       {loading ? (
-        <ActivityIndicator size="large" color="#812732" style={{ marginTop: 40 }} />
+        <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: space.xl }} />
       ) : sessions.length === 0 ? (
-        <Text style={{ textAlign: 'center', marginTop: 30, color: '#888' }}>
-          لا توجد جلسات تطابق الفلاتر المحددة.
-        </Text>
+        <EmptyState
+          title="لا توجد جلسات"
+          subtitle="لا توجد جلسات تطابق الفلاتر المحددة."
+        />
       ) : (
         <FlatList
           data={sessions}
@@ -238,74 +253,57 @@ export default function SalesScreen() {
           columnWrapperStyle={{ justifyContent: 'space-between' }}
         />
       )}
-    </View>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: '#fff', padding: 16 },
-  header: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center', marginBottom: 16 },
-  title: { fontSize: 22, fontWeight: 'bold', color: '#333' },
-  createButton: {
-    backgroundColor: '#812732',
-    flexDirection: 'row',
-    alignItems: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 14,
-    borderRadius: 8,
+  container: { flex: 1 },
+  createBtn: { minWidth: 120 },
+  dropdownContainer: {
+    marginBottom: space.md,
+    width: '60%',
+    maxWidth: 420,
+    alignSelf: 'center',
   },
-  createText: { color: '#fff', fontWeight: 'bold', marginLeft: 6 },
-  dropdownContainer: { marginBottom: 10, width: '60%', alignSelf: 'center' },
   select: {
     padding: 10,
     borderRadius: 8,
-    borderColor: '#ccc',
+    borderColor: colors.border,
     borderWidth: 1,
     width: '100%',
+    backgroundColor: colors.surface,
+    color: colors.text,
+    fontFamily: typography.fontAr,
+    fontSize: typography.sizeMd,
   },
-  resetButton: {
-    backgroundColor: '#888',
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    paddingVertical: 10,
-    paddingHorizontal: 16,
-    borderRadius: 8,
+  resetBtn: {
     alignSelf: 'center',
-    marginBottom: 16,
-    gap: 6,
+    marginBottom: space.lg,
   },
-  resetText: { color: '#fff', fontWeight: 'bold' },
-  grid: { paddingBottom: 20 },
+  grid: { paddingBottom: space.xl },
   card: {
-  backgroundColor: '#3AA6B9',
-  padding: 12,
-  borderRadius: 10,
-  width: '22%',
-  marginBottom: 16,
-},
-  cardTitle: { fontSize: 16, fontWeight: 'bold', color: '#fff' },
-  status: { fontSize: 14, color: '#fff', marginVertical: 6 },
-  meta: { fontSize: 13, color: '#fff', fontStyle: 'italic' },
-  manageButton: {
-    backgroundColor: '#fff',
-    padding: 8,
-    borderRadius: 6,
-    marginTop: 10,
+    width: '22%',
+    marginBottom: space.lg,
   },
-  manageText: {
-    color: '#812732',
-    fontWeight: 'bold',
-    textAlign: 'center',
+  cardTitle: {
+    fontFamily: typography.fontArMd,
+    fontSize: typography.sizeMd,
+    color: colors.text,
+    marginBottom: space.sm,
+  },
+  meta: {
+    ...textStyles.subtitle,
+    marginTop: space.sm,
   },
   errorText: {
-    color: 'red',
-    backgroundColor: '#ffe5e5',
-    padding: 10,
+    fontFamily: typography.fontArMd,
+    color: colors.danger,
+    backgroundColor: 'rgba(192, 57, 43, 0.08)',
+    padding: space.md,
     borderRadius: 8,
-    marginBottom: 10,
+    marginBottom: space.md,
     textAlign: 'center',
-    fontWeight: 'bold',
   },
 });
 
@@ -315,11 +313,11 @@ const pickerSelectStyles = {
     paddingVertical: 10,
     paddingHorizontal: 12,
     borderWidth: 1,
-    borderColor: '#ccc',
+    borderColor: colors.border,
     borderRadius: 8,
-    color: '#333',
+    color: colors.text,
     paddingRight: 30,
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
     marginBottom: 10,
   },
   inputAndroid: {
@@ -327,11 +325,11 @@ const pickerSelectStyles = {
     paddingHorizontal: 12,
     paddingVertical: 8,
     borderWidth: 1,
-    borderColor: '#ccc',
+    borderColor: colors.border,
     borderRadius: 8,
-    color: '#333',
+    color: colors.text,
     paddingRight: 30,
-    backgroundColor: '#fff',
+    backgroundColor: colors.surface,
     marginBottom: 10,
   },
 };

@@ -1,35 +1,44 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Image, StyleSheet, Alert, ScrollView } from 'react-native';
+import { Text, StyleSheet, Alert, Pressable } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
-import axios from './api/axiosInstance';
 import { Ionicons } from '@expo/vector-icons';
+import axios from './api/axiosInstance';
+import {
+  Screen,
+  Surface,
+  TextField,
+  Button,
+  PageHeader,
+  colors,
+  space,
+  typography,
+} from '../components/ui';
 
 export default function ChangePasswordScreen() {
   const router = useRouter();
   const { email } = useLocalSearchParams();
-
   const [otp, setOtp] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [loading, setLoading] = useState(false);
 
   const handleConfirm = async () => {
     if (!otp || !password || !confirmPassword) {
       Alert.alert('تنبيه', 'يرجى إدخال كل الحقول');
       return;
     }
-
     if (password !== confirmPassword) {
       Alert.alert('خطأ', 'كلمتا المرور غير متطابقتين');
       return;
     }
 
     try {
+      setLoading(true);
       const response = await axios.post('/auth/reset-password', {
         email,
         password,
         otp,
       });
-
       if (response.status === 200) {
         Alert.alert('تم', 'تم تعيين كلمة المرور بنجاح');
         router.replace('/login');
@@ -37,81 +46,63 @@ export default function ChangePasswordScreen() {
     } catch (error: any) {
       console.error(error);
       Alert.alert('خطأ', error?.response?.data?.message || 'فشل في تعيين كلمة المرور');
+    } finally {
+      setLoading(false);
     }
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-        <Ionicons name="arrow-back" size={24} color="#c23a8c" />
-      </TouchableOpacity>
+    <Screen contentStyle={styles.wrap}>
+      <Pressable onPress={() => router.back()} style={styles.back}>
+        <Ionicons name="arrow-back" size={22} color={colors.primary} />
+        <Text style={styles.backText}>رجوع</Text>
+      </Pressable>
 
-      <Image
-        source={require('../assets/images/change-password.png')}
-        style={styles.image}
-        resizeMode="contain"
-      />
+      <PageHeader title="تعيين كلمة مرور جديدة" subtitle={String(email || '')} />
 
-      <TextInput
-        placeholder="رمز التحقق (OTP)"
-        value={otp}
-        onChangeText={setOtp}
-        keyboardType="number-pad"
-        style={styles.input}
-      />
-
-      <TextInput
-        placeholder="كلمة المرور الجديدة"
-        secureTextEntry
-        value={password}
-        onChangeText={setPassword}
-        style={styles.input}
-      />
-
-      <TextInput
-        placeholder="إعادة كلمة المرور"
-        secureTextEntry
-        value={confirmPassword}
-        onChangeText={setConfirmPassword}
-        style={styles.input}
-      />
-
-      <TouchableOpacity style={styles.button} onPress={handleConfirm}>
-        <Text style={styles.buttonText}>تأكيد</Text>
-      </TouchableOpacity>
-    </ScrollView>
+      <Surface>
+        <TextField
+          label="رمز التحقق"
+          placeholder="OTP"
+          value={otp}
+          onChangeText={setOtp}
+          keyboardType="number-pad"
+        />
+        <TextField
+          label="كلمة المرور الجديدة"
+          placeholder="••••••••"
+          secureTextEntry
+          value={password}
+          onChangeText={setPassword}
+        />
+        <TextField
+          label="تأكيد كلمة المرور"
+          placeholder="••••••••"
+          secureTextEntry
+          value={confirmPassword}
+          onChangeText={setConfirmPassword}
+        />
+        <Button title="تأكيد" onPress={handleConfirm} loading={loading} />
+      </Surface>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    paddingTop: 60,
-    paddingBottom: 40,
-    paddingHorizontal: 20,
-    backgroundColor: '#fff',
+  wrap: {
+    maxWidth: 480,
+    width: '100%',
+    alignSelf: 'center',
+  },
+  back: {
+    flexDirection: 'row',
     alignItems: 'center',
-    flexGrow: 1,
+    gap: space.sm,
+    marginBottom: space.xl,
   },
-  backButton: { position: 'absolute', top: 50, left: 20, zIndex: 1 },
-  image: { width: '100%', height: 250, marginBottom: 30 },
-  input: {
-    width: '80%',
-    maxWidth: 400,
-    borderWidth: 1,
-    borderColor: '#00aacc',
-    borderRadius: 8,
-    paddingHorizontal: 15,
-    paddingVertical: 12,
-    fontSize: 16,
-    marginBottom: 20,
+  backText: {
+    fontFamily: typography.fontArMd,
+    color: colors.primary,
+    fontSize: typography.sizeMd,
   },
-  button: {
-    width: '80%',
-    maxWidth: 400,
-    backgroundColor: '#c23a8c',
-    paddingVertical: 14,
-    borderRadius: 8,
-    marginTop: 10,
-  },
-  buttonText: { color: '#fff', fontSize: 16, textAlign: 'center', fontWeight: 'bold' },
 });

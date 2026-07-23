@@ -1,20 +1,29 @@
-// باقي الاستيرادات كما هي
 import React, { useEffect, useState } from 'react';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import {
   View,
   Text,
-  TextInput,
   StyleSheet,
-  TouchableOpacity,
+  Pressable,
   ActivityIndicator,
   Alert,
-  ScrollView,
   Image,
 } from 'react-native';
 import axios from '../../api/axiosInstance';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
+import {
+  Screen,
+  Surface,
+  TextField,
+  Button,
+  PageHeader,
+  EmptyState,
+  colors,
+  space,
+  typography,
+  textStyles,
+} from '../../../components/ui';
 
 export default function ManageUserScreen() {
   const { id } = useLocalSearchParams();
@@ -24,7 +33,7 @@ export default function ManageUserScreen() {
   const [currentUser, setCurrentUser] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [stores, setStores] = useState<any[]>([]);
-  const [form, setForm] = useState({ name: '', email: '', role: '', store: '', image: null });
+  const [form, setForm] = useState({ name: '', email: '', role: '', store: '', image: null as string | null });
   const [showRoleOptions, setShowRoleOptions] = useState(false);
   const [roleOptions, setRoleOptions] = useState<string[]>([]);
 
@@ -65,7 +74,9 @@ export default function ManageUserScreen() {
           email: res.data.email,
           role: res.data.role,
           store: typeof res.data.store === 'object' ? res.data.store._id : res.data.store,
-          image: res.data.profileImage ? `${axios.defaults.baseURL?.replace('/api', '')}${res.data.profileImage}` : null,
+          image: res.data.profileImage
+            ? `${axios.defaults.baseURL?.replace('/api', '')}${res.data.profileImage}`
+            : null,
         });
       } catch (err) {
         console.error('Error fetching user:', err);
@@ -81,29 +92,30 @@ export default function ManageUserScreen() {
   const handleUpdate = async () => {
     try {
       const token = await AsyncStorage.getItem('token');
-      const updatedData = {
+      const updatedData: any = {
         name: form.name,
         email: form.email,
         role: form.role,
       };
 
       if (currentUser.role === 'StoreAdmin') {
-        updatedData['store'] = currentUser.store;
+        updatedData.store = currentUser.store;
       }
 
       await axios.put(`/users/${id}`, updatedData, {
         headers: { Authorization: `Bearer ${token}` },
       });
 
-      if (
-        ['StoreAdmin', 'StoreAccountant', 'Cashier'].includes(form.role) &&
-        form.store
-      ) {
-        await axios.patch(`/users/${id}/assign-store`, {
-          storeId: form.store,
-        }, {
-          headers: { Authorization: `Bearer ${token}` },
-        });
+      if (['StoreAdmin', 'StoreAccountant', 'Cashier'].includes(form.role) && form.store) {
+        await axios.patch(
+          `/users/${id}/assign-store`,
+          {
+            storeId: form.store,
+          },
+          {
+            headers: { Authorization: `Bearer ${token}` },
+          }
+        );
       }
 
       Alert.alert('تم التحديث بنجاح');
@@ -130,13 +142,10 @@ export default function ManageUserScreen() {
 
   const isSelf = currentUser?._id?.toString() === user?._id?.toString();
 
-  // ✅ آمن الآن: حتى لو store null
   let sameStore = false;
   if (user?.store && currentUser?.store) {
     const userStoreId =
-      typeof user.store === 'object'
-        ? user.store._id?.toString?.()
-        : user.store?.toString?.();
+      typeof user.store === 'object' ? user.store._id?.toString?.() : user.store?.toString?.();
 
     const currentStoreId = currentUser.store?.toString?.();
 
@@ -156,12 +165,14 @@ export default function ManageUserScreen() {
       currentRole === 'GeneralAccountant' &&
       currentUser.account === user.account &&
       targetRole !== 'AccountOwner'
-    ) return true;
+    )
+      return true;
     if (
       currentRole === 'StoreAdmin' &&
       sameStore &&
       ['StoreAccountant', 'Cashier'].includes(targetRole)
-    ) return true;
+    )
+      return true;
 
     return false;
   })();
@@ -179,7 +190,8 @@ export default function ManageUserScreen() {
       currentRole === 'GeneralAccountant' &&
       currentUser.account === user.account &&
       targetRole !== 'AccountOwner'
-    ) return true;
+    )
+      return true;
 
     return false;
   })();
@@ -187,194 +199,170 @@ export default function ManageUserScreen() {
   const isStoreRole = ['StoreAdmin', 'StoreAccountant', 'Cashier'].includes(form.role);
 
   if (loading) {
-    return <ActivityIndicator size="large" style={{ marginTop: 50 }} color="#812732" />;
+    return (
+      <Screen scroll={false} contentStyle={styles.centered}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </Screen>
+    );
   }
 
   if (!user) {
     return (
-      <View style={styles.centered}>
-        <Text>User not found</Text>
-        <TouchableOpacity onPress={() => router.back()}>
-          <Text style={styles.backText}>⬅️ Back</Text>
-        </TouchableOpacity>
-      </View>
+      <Screen scroll={false} contentStyle={styles.centered}>
+        <EmptyState title="User not found" />
+        <Button title="رجوع" variant="ghost" onPress={() => router.back()} />
+      </Screen>
     );
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-        <Ionicons name="arrow-back" size={24} color="#c23a8c" />
-      </TouchableOpacity>
-      <Text style={styles.title}>Manage User</Text>
+    <Screen contentStyle={styles.wrap}>
+      <Pressable onPress={() => router.back()} style={styles.back}>
+        <Ionicons name="arrow-back" size={22} color={colors.primary} />
+        <Text style={styles.backText}>رجوع</Text>
+      </Pressable>
 
-      {form.image && (
-        <Image
-          source={{ uri: form.image }}
-          style={styles.avatar}
+      <PageHeader title="إدارة المستخدم" subtitle={form.email} />
+
+      <Surface>
+        {form.image ? <Image source={{ uri: form.image }} style={styles.avatar} /> : null}
+
+        <TextField
+          label="الاسم"
+          placeholder="Name"
+          value={form.name}
+          editable={canEdit}
+          onChangeText={(val) => setForm({ ...form, name: val })}
         />
-      )}
 
-      <TextInput
-        style={styles.input}
-        placeholder="Name"
-        value={form.name}
-        editable={canEdit}
-        onChangeText={(val) => setForm({ ...form, name: val })}
-      />
+        <TextField
+          label="البريد الإلكتروني"
+          placeholder="Email"
+          keyboardType="email-address"
+          autoCapitalize="none"
+          value={form.email}
+          editable={canEdit}
+          onChangeText={(val) => setForm({ ...form, email: val })}
+        />
 
-      <TextInput
-        style={styles.input}
-        placeholder="Email"
-        keyboardType="email-address"
-        value={form.email}
-        editable={canEdit}
-        onChangeText={(val) => setForm({ ...form, email: val })}
-      />
+        {canEdit && (
+          <>
+            <Pressable onPress={() => setShowRoleOptions(!showRoleOptions)} style={styles.dropdownToggle}>
+              <Text style={styles.dropdownText}>الدور: {form.role}</Text>
+            </Pressable>
 
-      {canEdit && (
-        <>
-          <TouchableOpacity
-            onPress={() => setShowRoleOptions(!showRoleOptions)}
-            style={styles.dropdownToggle}
-          >
-            <Text style={styles.dropdownText}>Role: {form.role}</Text>
-          </TouchableOpacity>
+            {showRoleOptions && (
+              <View style={styles.dropdown}>
+                {roleOptions.map((role) => (
+                  <Pressable
+                    key={role}
+                    style={styles.dropdownItem}
+                    onPress={() => {
+                      setForm({ ...form, role, store: currentUser.store });
+                      setShowRoleOptions(false);
+                    }}
+                  >
+                    <Text style={styles.optionText}>{role}</Text>
+                  </Pressable>
+                ))}
+              </View>
+            )}
+          </>
+        )}
 
-          {showRoleOptions && (
-            <View style={styles.dropdown}>
-              {roleOptions.map((role) => (
-                <TouchableOpacity
-                  key={role}
-                  style={styles.dropdownItem}
-                  onPress={() => {
-                    setForm({ ...form, role, store: currentUser.store });
-                    setShowRoleOptions(false);
-                  }}
+        {canEdit && isStoreRole && currentUser.role !== 'StoreAdmin' && (
+          <View style={styles.fieldBlock}>
+            <Text style={styles.label}>اختر المتجر</Text>
+            {stores.map((store) => {
+              const selected = form.store === store._id;
+              return (
+                <Pressable
+                  key={store._id}
+                  onPress={() => setForm({ ...form, store: store._id })}
+                  style={[styles.dropdownItem, selected && styles.dropdownItemSelected]}
                 >
-                  <Text>{role}</Text>
-                </TouchableOpacity>
-              ))}
-            </View>
-          )}
-        </>
-      )}
-
-      {canEdit && isStoreRole && currentUser.role !== 'StoreAdmin' && (
-        <View style={{ width: '40%', marginBottom: 16 }}>
-          <Text style={{ marginBottom: 4 }}>Select Store:</Text>
-          <View style={styles.dropdown}>
-            {stores.map((store) => (
-              <TouchableOpacity
-                key={store._id}
-                onPress={() => setForm({ ...form, store: store._id })}
-                style={[
-                  styles.dropdownItem,
-                  form.store === store._id && styles.dropdownItemSelected,
-                ]}
-              >
-                <Text>{store.name}</Text>
-              </TouchableOpacity>
-            ))}
+                  <Text style={styles.optionText}>{store.name}</Text>
+                </Pressable>
+              );
+            })}
           </View>
-        </View>
-      )}
+        )}
 
-      {canEdit && (
-        <TouchableOpacity style={styles.saveButton} onPress={handleUpdate}>
-          <Text style={styles.saveText}>Save Changes</Text>
-        </TouchableOpacity>
-      )}
-
-      {canDelete && (
-        <TouchableOpacity style={styles.deleteButton} onPress={handleDelete}>
-          <Text style={styles.deleteText}>🗑️ Delete User</Text>
-        </TouchableOpacity>
-      )}
-    </ScrollView>
+        {canEdit && <Button title="حفظ التغييرات" onPress={handleUpdate} />}
+        {canDelete && (
+          <Button title="حذف المستخدم" variant="danger" onPress={handleDelete} style={{ marginTop: space.md }} />
+        )}
+      </Surface>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    padding: 20,
-    alignItems: 'center',
-  },
-  backButton: {
-    alignSelf: 'flex-start',
-  },
-  title: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#c23a8c',
-    marginBottom: 20,
-  },
-  input: {
-    width: '40%',
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 16,
-  },
-  saveButton: {
-    backgroundColor: '#c23a8c',
-    paddingVertical: 12,
-    borderRadius: 8,
-    width: '40%',
-    marginTop: 10,
-  },
-  saveText: {
-    color: '#fff',
-    textAlign: 'center',
-    fontWeight: 'bold',
-  },
-  deleteButton: {
-    backgroundColor: '#812732',
-    paddingVertical: 12,
-    borderRadius: 8,
-    width: '40%',
-    marginTop: 10,
-  },
-  deleteText: {
-    color: '#fff',
-    textAlign: 'center',
-    fontWeight: 'bold',
+  wrap: {
+    maxWidth: 560,
+    width: '100%',
+    alignSelf: 'center',
   },
   centered: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
+  },
+  back: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.sm,
+    marginBottom: space.xl,
+  },
+  backText: {
+    fontFamily: typography.fontArMd,
+    color: colors.primary,
+    fontSize: typography.sizeMd,
   },
   avatar: {
-    width: 100,
-    height: 100,
-    borderRadius: 50,
-    marginBottom: 20,
-    backgroundColor: '#ccc',
+    width: 96,
+    height: 96,
+    borderRadius: 48,
+    marginBottom: space.lg,
+    alignSelf: 'center',
+    backgroundColor: colors.border,
+  },
+  label: {
+    ...textStyles.label,
+    marginBottom: space.sm,
+  },
+  fieldBlock: {
+    marginBottom: space.lg,
+  },
+  dropdownToggle: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 12,
+    padding: space.md,
+    marginBottom: space.md,
+    backgroundColor: colors.canvasAlt,
+  },
+  dropdownText: {
+    ...textStyles.body,
+    textAlign: 'center',
+    fontFamily: typography.fontArMd,
   },
   dropdown: {
     borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 8,
-    backgroundColor: '#fff',
+    borderColor: colors.border,
+    borderRadius: 12,
+    marginBottom: space.lg,
+    overflow: 'hidden',
   },
   dropdownItem: {
-    padding: 10,
+    padding: space.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
   },
   dropdownItemSelected: {
-    backgroundColor: '#eee',
+    backgroundColor: 'rgba(42, 155, 176, 0.1)',
   },
-  dropdownToggle: {
-    width: '40%',
-    padding: 12,
-    borderRadius: 8,
-    backgroundColor: '#eee',
-    marginBottom: 10,
-  },
-  dropdownText: {
-    textAlign: 'center',
-    fontWeight: 'bold',
+  optionText: {
+    ...textStyles.body,
   },
 });

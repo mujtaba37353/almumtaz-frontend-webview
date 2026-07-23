@@ -1,138 +1,163 @@
 import React, { useState } from 'react';
-import { View, Text, TextInput, TouchableOpacity, Image, StyleSheet, Alert } from 'react-native';
+import { View, Text, Image, StyleSheet, Alert, Pressable } from 'react-native';
 import { useRouter } from 'expo-router';
 import axios from './api/axiosInstance';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import {
+  Screen,
+  Surface,
+  TextField,
+  Button,
+  colors,
+  space,
+  typography,
+  textStyles,
+} from '../components/ui';
 
 export default function LoginScreen() {
   const router = useRouter();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [loading, setLoading] = useState(false);
+  const [errorMessage, setErrorMessage] = useState('');
 
   const handleLogin = async () => {
+    setErrorMessage('');
     if (!email || !password) {
-      return Alert.alert('تنبيه', 'يرجى إدخال البريد وكلمة المرور');
+      const msg = 'يرجى إدخال البريد وكلمة المرور';
+      setErrorMessage(msg);
+      return Alert.alert('تنبيه', msg);
     }
 
     try {
       setLoading(true);
-
       const { data } = await axios.post('/auth/login', { email, password });
-
       const { token, role, ...user } = data;
 
       await AsyncStorage.setItem('token', token);
       await AsyncStorage.setItem('role', role);
       await AsyncStorage.setItem('user', JSON.stringify(user));
 
-      // التوجيه حسب الدور
-      if (role === 'AppOwner' || role === 'AppAdmin' || role === 'AccountOwner' || role === 'GeneralAccountant' || role === 'StoreAdmin' || role === 'StoreAccountant' || role === 'Cashier') {
+      if (
+        role === 'AppOwner' ||
+        role === 'AppAdmin' ||
+        role === 'AccountOwner' ||
+        role === 'GeneralAccountant' ||
+        role === 'StoreAdmin' ||
+        role === 'StoreAccountant' ||
+        role === 'Cashier'
+      ) {
         router.replace('/admin/main');
       } else {
-        router.replace('/home'); // أو حسب نوع المستخدم لاحقًا
+        router.replace('/home');
       }
-
     } catch (error: any) {
       console.error(error);
-      Alert.alert('خطأ', error?.response?.data?.message || 'فشل تسجيل الدخول');
+      const apiBase = (axios as any)?.defaults?.baseURL || 'غير معروف';
+      const msg =
+        error?.response?.data?.message ||
+        (error?.code === 'ERR_NETWORK' || error?.message?.includes('Network')
+          ? `تعذر الاتصال بالخادم (${apiBase}). تأكد أن الـ API يعمل على المنفذ 5000`
+          : 'فشل تسجيل الدخول');
+      setErrorMessage(msg);
+      Alert.alert('خطأ', msg);
     } finally {
       setLoading(false);
     }
   };
 
   return (
-    <View style={styles.container}>
-      <Image source={require('../assets/images/logo.png')} style={styles.logo} />
+    <Screen contentStyle={styles.center}>
+      <View style={styles.heroBrand}>
+        <Image source={require('../assets/images/logo.png')} style={styles.logo} resizeMode="contain" />
+        <Text style={styles.brandAr}>الممتاز</Text>
+        <Text style={styles.tagline}>منصة إدارة المتاجر والفوترة الإلكترونية</Text>
+      </View>
 
-      <TextInput
-        placeholder="Email"
-        style={styles.input}
-        value={email}
-        onChangeText={setEmail}
-        keyboardType="email-address"
-        autoCapitalize="none"
-      />
-      <TextInput
-        placeholder="Password"
-        style={styles.input}
-        value={password}
-        onChangeText={setPassword}
-        secureTextEntry
-      />
+      <Surface style={styles.panel}>
+        <Text style={styles.panelTitle}>تسجيل الدخول</Text>
+        <TextField
+          label="البريد الإلكتروني"
+          placeholder="email@example.com"
+          value={email}
+          onChangeText={setEmail}
+          keyboardType="email-address"
+          autoCapitalize="none"
+        />
+        <TextField
+          label="كلمة المرور"
+          placeholder="••••••••"
+          value={password}
+          onChangeText={setPassword}
+          secureTextEntry
+        />
 
-      <TouchableOpacity onPress={() => router.push('/forget-password')}>
-        <Text style={styles.link}>Forget Password?</Text>
-      </TouchableOpacity>
+        {errorMessage ? <Text style={styles.errorText}>{errorMessage}</Text> : null}
 
-      <TouchableOpacity style={styles.loginBtn} onPress={handleLogin} disabled={loading}>
-        <Text style={styles.loginText}>{loading ? 'Loading...' : 'Sign in'}</Text>
-      </TouchableOpacity>
+        <Pressable onPress={() => router.push('/forget-password')} style={styles.linkWrap}>
+          <Text style={styles.link}>نسيت كلمة المرور؟</Text>
+        </Pressable>
 
-      <TouchableOpacity style={styles.signupBtn} onPress={() => router.push('/subscriptions')}>
-        <Text style={styles.signupText}>Sign up</Text>
-      </TouchableOpacity>
-    </View>
+        <Button title={loading ? 'جاري الدخول...' : 'دخول'} onPress={handleLogin} loading={loading} />
+        <Button
+          title="إنشاء حساب جديد"
+          variant="secondary"
+          onPress={() => router.push('/subscriptions')}
+          style={{ marginTop: space.md }}
+        />
+      </Surface>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: '#fff',
+  center: {
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
+    maxWidth: 480,
+    width: '100%',
+    alignSelf: 'center',
+  },
+  heroBrand: {
+    alignItems: 'center',
+    marginBottom: space.xl,
   },
   logo: {
-    width: 250,
-    height: 120,
-    marginBottom: 40,
+    width: 220,
+    height: 100,
   },
-  input: {
-    width: '80%',
-    maxWidth: 400,
-    borderWidth: 1,
-    borderColor: '#00aacc',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 16,
-    alignSelf: 'center',
+  brandAr: {
+    fontFamily: typography.fontArBold,
+    fontSize: typography.sizeHero,
+    color: colors.brandDeep,
+    marginTop: space.sm,
   },
-  loginBtn: {
-    width: '80%',
-    maxWidth: 400,
-    backgroundColor: '#32a8c4',
-    padding: 14,
-    borderRadius: 8,
-    marginTop: 10,
-    alignSelf: 'center',
-  },
-  signupBtn: {
-    width: '80%',
-    maxWidth: 400,
-    backgroundColor: '#cc4da0',
-    padding: 14,
-    borderRadius: 8,
-    marginTop: 10,
-    alignSelf: 'center',
-  },
-  loginText: {
+  tagline: {
+    ...textStyles.subtitle,
     textAlign: 'center',
-    color: '#fff',
-    fontWeight: 'bold',
-    fontSize: 16,
+    marginTop: space.xs,
   },
-  signupText: {
+  panel: {
+    width: '100%',
+  },
+  panelTitle: {
+    ...textStyles.title,
+    marginBottom: space.lg,
     textAlign: 'center',
-    color: '#fff',
-    fontWeight: 'bold',
-    fontSize: 16,
+  },
+  linkWrap: {
+    alignSelf: 'flex-end',
+    marginBottom: space.lg,
   },
   link: {
-    alignSelf: 'flex-end',
-    marginRight: '10%',
-    color: '#32a8c4',
-    marginBottom: 10,
+    fontFamily: typography.fontArMd,
+    color: colors.brand,
+    fontSize: typography.sizeSm,
+  },
+  errorText: {
+    fontFamily: typography.fontAr,
+    color: colors.danger,
+    textAlign: 'center',
+    marginBottom: space.md,
   },
 });

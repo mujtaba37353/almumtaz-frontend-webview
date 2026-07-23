@@ -6,12 +6,22 @@ import {
   View,
   Text,
   StyleSheet,
-  ScrollView,
-  TouchableOpacity,
   ActivityIndicator,
   Image,
+  Pressable,
 } from 'react-native';
 import axios from '../api/axiosInstance';
+import {
+  Screen,
+  PageHeader,
+  Surface,
+  Button,
+  EmptyState,
+  colors,
+  space,
+  typography,
+  textStyles,
+} from '../../components/ui';
 
 export default function SubscriptionDetails() {
   const { id } = useLocalSearchParams();
@@ -29,128 +39,137 @@ export default function SubscriptionDetails() {
   }, [id]);
 
   if (loading) {
-    return <ActivityIndicator size="large" style={{ marginTop: 50 }} color="#812732" />;
+    return (
+      <Screen scroll={false} contentStyle={styles.loading}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={styles.loadingText}>جارٍ تحميل الباقة...</Text>
+      </Screen>
+    );
   }
 
   if (!subscription) {
     return (
-      <View style={styles.centered}>
-        <Text style={styles.errorText}>Subscription not found.</Text>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Text style={styles.backText}>⬅️ Back</Text>
-        </TouchableOpacity>
-      </View>
+      <Screen scroll={false} contentStyle={styles.loading}>
+        <EmptyState title="الاشتراك غير موجود" subtitle="تحقق من الرابط وحاول مرة أخرى" />
+        <Button title="رجوع" variant="ghost" onPress={() => router.back()} />
+      </Screen>
     );
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      {/* ✅ Top Bar */}
+    <Screen>
       <View style={styles.topBar}>
-        <Image source={require('../../assets/images/logo.png')} style={styles.headerLogo} />
-        <TouchableOpacity onPress={() => router.push('/login')}>
+        <Image source={require('../../assets/images/logo.png')} style={styles.headerLogo} resizeMode="contain" />
+        <Pressable onPress={() => router.push('/login')}>
           <Text style={styles.signInText}>
-            Already have an account? <Text style={styles.signInLink}>Sign in</Text>
+            لديك حساب؟ <Text style={styles.signInLink}>تسجيل الدخول</Text>
           </Text>
-        </TouchableOpacity>
+        </Pressable>
       </View>
 
-      <Text style={styles.name}>{subscription.name}</Text>
-      <Text style={styles.label}>Monthly: <Text style={styles.value}>{subscription.monthlyPrice} SAR</Text></Text>
-      <Text style={styles.label}>Yearly: <Text style={styles.value}>{subscription.yearlyPrice} SAR</Text></Text>
-      <Text style={styles.label}>Free Trial: <Text style={styles.value}>{subscription.freeTrialDays} days</Text></Text>
-      <Text style={styles.label}>Allowed Users: <Text style={styles.value}>{subscription.allowedUsers}</Text></Text>
-      <Text style={styles.label}>Allowed Stores: <Text style={styles.value}>{subscription.allowedStores}</Text></Text>
-      <Text style={styles.label}>Allowed Products: <Text style={styles.value}>{subscription.allowedProducts}</Text></Text>
-      <Text style={styles.label}>Type: <Text style={styles.value}>{subscription.type}</Text></Text>
+      <PageHeader
+        title={subscription.name}
+        subtitle="تفاصيل الباقة والحدود المتاحة"
+      />
 
-      <TouchableOpacity style={styles.enrollButton} onPress={() => router.push(`/create-account?subscriptionId=${subscription._id}`)}>
-        <Text style={styles.enrollText}>Enroll Now</Text>
-      </TouchableOpacity>
+      <Surface style={styles.panel}>
+        <View style={styles.row}>
+          <Text style={styles.label}>شهرياً</Text>
+          <Text style={styles.value}>{subscription.monthlyPrice} ر.س</Text>
+        </View>
+        <View style={styles.row}>
+          <Text style={styles.label}>سنوياً</Text>
+          <Text style={styles.value}>{subscription.yearlyPrice} ر.س</Text>
+        </View>
+        <View style={styles.row}>
+          <Text style={styles.label}>تجربة مجانية</Text>
+          <Text style={styles.value}>{subscription.freeTrialDays} يوم</Text>
+        </View>
+        <View style={styles.row}>
+          <Text style={styles.label}>المستخدمون</Text>
+          <Text style={styles.value}>{subscription.allowedUsers}</Text>
+        </View>
+        <View style={styles.row}>
+          <Text style={styles.label}>المتاجر</Text>
+          <Text style={styles.value}>{subscription.allowedStores}</Text>
+        </View>
+        <View style={styles.row}>
+          <Text style={styles.label}>المنتجات</Text>
+          <Text style={styles.value}>{subscription.allowedProducts}</Text>
+        </View>
+        <View style={[styles.row, styles.rowLast]}>
+          <Text style={styles.label}>النوع</Text>
+          <Text style={styles.value}>{subscription.type}</Text>
+        </View>
 
-      <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-        <Text style={styles.backText}>⬅️ Back</Text>
-      </TouchableOpacity>
-    </ScrollView>
+        <Button
+          title="الاشتراك الآن"
+          onPress={() => router.push(`/create-account?subscriptionId=${subscription._id}`)}
+          style={{ marginTop: space.lg }}
+        />
+        <Button
+          title="رجوع"
+          variant="ghost"
+          onPress={() => router.back()}
+          style={{ marginTop: space.sm }}
+        />
+      </Surface>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    padding: 24,
-    backgroundColor: '#fdfafa',
+  loading: {
+    justifyContent: 'center',
     alignItems: 'center',
   },
+  loadingText: {
+    ...textStyles.subtitle,
+    marginTop: space.md,
+  },
   topBar: {
-    width: '100%',
-    paddingVertical: 16,
-    paddingHorizontal: 20,
-    backgroundColor: '#f5f5f5',
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    marginBottom: 20,
+    marginBottom: space.xl,
   },
   headerLogo: {
     width: 120,
-    height: 40,
-    resizeMode: 'contain',
+    height: 48,
   },
   signInText: {
-    fontSize: 14,
-    color: '#666',
+    fontFamily: typography.fontAr,
+    color: colors.textMuted,
+    fontSize: typography.sizeSm,
   },
   signInLink: {
-    fontSize: 16,
-    color: '#c23a8c',
-    fontWeight: 'bold',
+    fontFamily: typography.fontArBold,
+    color: colors.primary,
   },
-  centered: {
-    flex: 1,
-    justifyContent: 'center',
+  panel: {
+    maxWidth: 480,
+    width: '100%',
+    alignSelf: 'center',
+  },
+  row: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
     alignItems: 'center',
-    padding: 20,
+    paddingVertical: space.md,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
   },
-  name: {
-    fontSize: 28,
-    fontWeight: 'bold',
-    color: '#c23a8c',
-    marginBottom: 20,
+  rowLast: {
+    borderBottomWidth: 0,
   },
   label: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    marginTop: 10,
-    color: '#333',
+    ...textStyles.label,
+    color: colors.text,
+    fontSize: typography.sizeMd,
   },
   value: {
-    fontWeight: 'normal',
-    color: '#666',
-  },
-  enrollButton: {
-    marginTop: 30,
-    backgroundColor: '#c23a8c',
-    paddingVertical: 12,
-    paddingHorizontal: 30,
-    borderRadius: 8,
-  },
-  enrollText: {
-    color: '#fff',
-    fontWeight: 'bold',
-    fontSize: 16,
-  },
-  backButton: {
-    marginTop: 20,
-    padding: 10,
-  },
-  backText: {
-    fontSize: 16,
-    color: '#888',
-  },
-  errorText: {
-    fontSize: 18,
-    color: 'red',
+    fontFamily: typography.fontSansMd,
+    fontSize: typography.sizeMd,
+    color: colors.textMuted,
   },
 });

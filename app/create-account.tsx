@@ -2,18 +2,22 @@
 
 import React, { useEffect, useState } from 'react';
 import { useRouter, useLocalSearchParams } from 'expo-router';
-import {
-  View,
-  Text,
-  TextInput,
-  StyleSheet,
-  TouchableOpacity,
-  ScrollView,
-  Alert,
-  ActivityIndicator,
-} from 'react-native';
+import { Text, StyleSheet, Alert, ActivityIndicator, Pressable } from 'react-native';
+import { Ionicons } from '@expo/vector-icons';
 import axios from './api/axiosInstance';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import {
+  Screen,
+  PageHeader,
+  Surface,
+  TextField,
+  Button,
+  EmptyState,
+  colors,
+  space,
+  typography,
+  textStyles,
+} from '../components/ui';
 
 export default function CreateAccountScreen() {
   const router = useRouter();
@@ -68,117 +72,102 @@ export default function CreateAccountScreen() {
   };
 
   if (loading) {
-    return <ActivityIndicator size="large" style={{ marginTop: 50 }} color="#812732" />;
+    return (
+      <Screen scroll={false} contentStyle={styles.loading}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={styles.loadingText}>جارٍ التحميل...</Text>
+      </Screen>
+    );
   }
 
   if (!subscription) {
     return (
-      <View style={styles.centered}>
-        <Text style={styles.errorText}>Subscription not found.</Text>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-          <Text style={styles.backText}>⬅️ Back</Text>
-        </TouchableOpacity>
-      </View>
+      <Screen scroll={false} contentStyle={styles.loading}>
+        <EmptyState title="الاشتراك غير موجود" subtitle="تحقق من الرابط وحاول مرة أخرى" />
+        <Button title="رجوع" variant="ghost" onPress={() => router.back()} />
+      </Screen>
     );
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>Create Your Business Account</Text>
+    <Screen contentStyle={styles.wrap}>
+      <Pressable onPress={() => router.back()} style={styles.back}>
+        <Ionicons name="arrow-back" size={22} color={colors.primary} />
+        <Text style={styles.backText}>رجوع</Text>
+      </Pressable>
 
-      <Text style={styles.subtitle}>Selected Plan: {subscription.name}</Text>
-
-      <TextInput
-        style={styles.input}
-        placeholder="Your Name"
-        value={form.name}
-        onChangeText={(val) => setForm({ ...form, name: val })}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Email"
-        keyboardType="email-address"
-        value={form.email}
-        onChangeText={(val) => setForm({ ...form, email: val })}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Password"
-        secureTextEntry
-        value={form.password}
-        onChangeText={(val) => setForm({ ...form, password: val })}
-      />
-      <TextInput
-        style={styles.input}
-        placeholder="Business Name (Account)"
-        value={form.accountName}
-        onChangeText={(val) => setForm({ ...form, accountName: val })}
+      <PageHeader
+        title="إنشاء حساب منشأتك"
+        subtitle={`الباقة المختارة: ${subscription.name}`}
       />
 
-      <TouchableOpacity style={styles.registerButton} onPress={handleRegister}>
-        <Text style={styles.registerText}>Register and Start</Text>
-      </TouchableOpacity>
+      <Surface style={styles.panel}>
+        <TextField
+          label="الاسم"
+          placeholder="اسمك الكامل"
+          value={form.name}
+          onChangeText={(val) => setForm({ ...form, name: val })}
+        />
+        <TextField
+          label="البريد الإلكتروني"
+          placeholder="email@example.com"
+          keyboardType="email-address"
+          autoCapitalize="none"
+          value={form.email}
+          onChangeText={(val) => setForm({ ...form, email: val })}
+        />
+        <TextField
+          label="كلمة المرور"
+          placeholder="••••••••"
+          secureTextEntry
+          value={form.password}
+          onChangeText={(val) => setForm({ ...form, password: val })}
+        />
+        <TextField
+          label="اسم المنشأة"
+          placeholder="اسم الحساب / المنشأة"
+          value={form.accountName}
+          onChangeText={(val) => setForm({ ...form, accountName: val })}
+        />
 
-      <TouchableOpacity style={styles.backButton} onPress={() => router.back()}>
-        <Text style={styles.backText}>⬅️ Back</Text>
-      </TouchableOpacity>
-    </ScrollView>
+        <Button title="تسجيل والبدء" onPress={handleRegister} />
+        <Button
+          title="رجوع"
+          variant="ghost"
+          onPress={() => router.back()}
+          style={{ marginTop: space.sm }}
+        />
+      </Surface>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    padding: 24,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-  },
-  title: {
-    fontSize: 24,
-    fontWeight: 'bold',
-    color: '#c23a8c',
-    marginBottom: 12,
-  },
-  subtitle: {
-    fontSize: 16,
-    color: '#444',
-    marginBottom: 20,
-  },
-  input: {
+  wrap: {
+    maxWidth: 480,
     width: '100%',
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 8,
-    padding: 12,
-    marginBottom: 14,
+    alignSelf: 'center',
   },
-  registerButton: {
-    backgroundColor: '#c23a8c',
-    padding: 12,
-    borderRadius: 8,
-    width: '100%',
-    marginTop: 10,
-  },
-  registerText: {
-    color: '#fff',
-    fontWeight: 'bold',
-    textAlign: 'center',
-  },
-  backButton: {
-    marginTop: 16,
-    padding: 10,
-  },
-  backText: {
-    fontSize: 16,
-    color: '#888',
-  },
-  centered: {
-    flex: 1,
+  loading: {
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
   },
-  errorText: {
-    fontSize: 18,
-    color: 'red',
+  loadingText: {
+    ...textStyles.subtitle,
+    marginTop: space.md,
+  },
+  back: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.sm,
+    marginBottom: space.xl,
+  },
+  backText: {
+    fontFamily: typography.fontArMd,
+    color: colors.primary,
+    fontSize: typography.sizeMd,
+  },
+  panel: {
+    width: '100%',
   },
 });

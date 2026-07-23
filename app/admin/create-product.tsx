@@ -1,14 +1,29 @@
 import React, { useState, useEffect } from 'react';
 import {
-  View, Text, TextInput, StyleSheet, ScrollView,
-  TouchableOpacity, Image, Alert, Platform
+  View,
+  Text,
+  StyleSheet,
+  Pressable,
+  Image,
+  Alert,
+  Platform,
 } from 'react-native';
-import { useLocalSearchParams } from 'expo-router';
-import { useRouter } from 'expo-router';
+import { useLocalSearchParams, useRouter } from 'expo-router';
 import * as ImagePicker from 'expo-image-picker';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { Ionicons } from '@expo/vector-icons';
 import axios from '../api/axiosInstance';
+import {
+  Screen,
+  Surface,
+  TextField,
+  Button,
+  PageHeader,
+  colors,
+  space,
+  typography,
+  textStyles,
+} from '../../components/ui';
 
 export default function CreateProductScreen() {
   const router = useRouter();
@@ -29,35 +44,33 @@ export default function CreateProductScreen() {
 
   const { sku } = useLocalSearchParams();
 
-useEffect(() => {
-  const fetchStoresAndRole = async () => {
-    const token = await AsyncStorage.getItem('token');
-    const roleVal = await AsyncStorage.getItem('role');
-    setRole(roleVal);
+  useEffect(() => {
+    const fetchStoresAndRole = async () => {
+      const token = await AsyncStorage.getItem('token');
+      const roleVal = await AsyncStorage.getItem('role');
+      setRole(roleVal);
 
-    if (['AccountOwner', 'GeneralAccountant'].includes(roleVal || '')) {
-      const res = await axios.get('/stores', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      setStores(res.data);
-    } else if (['StoreAdmin', 'StoreAccountant'].includes(roleVal || '')) {
-      const res = await axios.get('/users/profile', {
-        headers: { Authorization: `Bearer ${token}` },
-      });
-      if (res.data?.store) {
-        setForm(prev => ({ ...prev, store: res.data.store }));
+      if (['AccountOwner', 'GeneralAccountant'].includes(roleVal || '')) {
+        const res = await axios.get('/stores', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        setStores(res.data);
+      } else if (['StoreAdmin', 'StoreAccountant'].includes(roleVal || '')) {
+        const res = await axios.get('/users/profile', {
+          headers: { Authorization: `Bearer ${token}` },
+        });
+        if (res.data?.store) {
+          setForm((prev) => ({ ...prev, store: res.data.store }));
+        }
       }
+    };
+
+    fetchStoresAndRole();
+
+    if (sku && typeof sku === 'string') {
+      setForm((prev) => ({ ...prev, sku }));
     }
-  };
-
-  fetchStoresAndRole();
-
-  // ✅ إضافة SKU من رابط الصفحة
-  if (sku && typeof sku === 'string') {
-    setForm(prev => ({ ...prev, sku }));
-  }
-}, [sku]);
-
+  }, [sku]);
 
   const pickImage = async () => {
     const result = await ImagePicker.launchImageLibraryAsync({
@@ -120,13 +133,16 @@ useEffect(() => {
         ...form,
         price: parseFloat(form.price),
         quantity: form.quantity ? parseInt(form.quantity) : undefined,
-        barcodes: form.barcodes.split(',').map(b => b.trim()).filter(b => b),
+        barcodes: form.barcodes
+          .split(',')
+          .map((b) => b.trim())
+          .filter((b) => b),
         image: uploadedImage,
         specifications: specifications
-          .filter(s => s.name && s.name.trim() !== '')
-          .map(s => ({
+          .filter((s) => s.name && s.name.trim() !== '')
+          .map((s) => ({
             name: s.name,
-            price: s.price ? Number(s.price) : undefined
+            price: s.price ? Number(s.price) : undefined,
           })),
       };
 
@@ -143,151 +159,203 @@ useEffect(() => {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-        <Ionicons name="arrow-back" size={24} color="#c23a8c" />
-      </TouchableOpacity>
+    <Screen contentStyle={styles.wrap}>
+      <Pressable onPress={() => router.back()} style={styles.back}>
+        <Ionicons name="arrow-back" size={22} color={colors.primary} />
+        <Text style={styles.backText}>رجوع</Text>
+      </Pressable>
 
-      <TouchableOpacity onPress={pickImage}>
-        <Image
-          source={imageUri ? { uri: imageUri } : require('../../assets/images/logo.png')}
-          style={styles.image}
+      <PageHeader title="إنشاء منتج" subtitle="أدخل بيانات المنتج والمواصفات" />
+
+      <Surface>
+        <Pressable onPress={pickImage} style={styles.imageBlock}>
+          <Image
+            source={imageUri ? { uri: imageUri } : require('../../assets/images/logo.png')}
+            style={styles.image}
+          />
+          <Text style={styles.changeImage}>اختر صورة المنتج</Text>
+        </Pressable>
+
+        <TextField
+          label="الاسم"
+          placeholder="الاسم"
+          value={form.name}
+          onChangeText={(val) => setForm({ ...form, name: val })}
         />
-        <Text style={styles.changeImage}>📸 اختر صورة المنتج</Text>
-      </TouchableOpacity>
-
-      {[
-        { placeholder: 'الاسم', key: 'name' },
-        { placeholder: 'السعر', key: 'price', keyboardType: 'numeric' },
-        { placeholder: 'الكمية', key: 'quantity', keyboardType: 'numeric' },
-        { placeholder: 'الوصف', key: 'description' },
-        { placeholder: 'التصنيف', key: 'category' },
-        { placeholder: 'SKU', key: 'sku' },
-        { placeholder: 'الباركود (مفصولة بفاصلة)', key: 'barcodes' },
-      ].map(({ placeholder, key, keyboardType }) => (
-        <TextInput
-          key={key}
-          placeholder={placeholder}
-          value={form[key as keyof typeof form]}
-          onChangeText={(val) => setForm({ ...form, [key]: val })}
-          style={styles.input}
-          keyboardType={keyboardType}
+        <TextField
+          label="السعر"
+          placeholder="السعر"
+          value={form.price}
+          onChangeText={(val) => setForm({ ...form, price: val })}
+          keyboardType="numeric"
         />
-      ))}
+        <TextField
+          label="الكمية"
+          placeholder="الكمية"
+          value={form.quantity}
+          onChangeText={(val) => setForm({ ...form, quantity: val })}
+          keyboardType="numeric"
+        />
+        <TextField
+          label="الوصف"
+          placeholder="الوصف"
+          value={form.description}
+          onChangeText={(val) => setForm({ ...form, description: val })}
+        />
+        <TextField
+          label="التصنيف"
+          placeholder="التصنيف"
+          value={form.category}
+          onChangeText={(val) => setForm({ ...form, category: val })}
+        />
+        <TextField
+          label="SKU"
+          placeholder="SKU"
+          value={form.sku}
+          onChangeText={(val) => setForm({ ...form, sku: val })}
+        />
+        <TextField
+          label="الباركود"
+          placeholder="مفصولة بفاصلة"
+          value={form.barcodes}
+          onChangeText={(val) => setForm({ ...form, barcodes: val })}
+        />
 
-      {['AccountOwner', 'GeneralAccountant'].includes(role || '') && (
-        <View style={styles.input}>
-          {Platform.OS === 'web' ? (
-            <select
-              value={form.store}
-              onChange={(e) => setForm(prev => ({ ...prev, store: e.target.value }))}
-              style={{ padding: 10, width: '100%' }}
-            >
-              <option value="">اختر المتجر</option>
-              {stores.map((store) => (
-                <option key={store._id} value={store._id}>{store.name}</option>
-              ))}
-            </select>
-          ) : (
-            stores.map((store) => (
-              <TouchableOpacity
-                key={store._id}
-                onPress={() => setForm(prev => ({ ...prev, store: store._id }))}
+        {['AccountOwner', 'GeneralAccountant'].includes(role || '') && (
+          <View style={styles.fieldBlock}>
+            <Text style={styles.label}>المتجر</Text>
+            {Platform.OS === 'web' ? (
+              <select
+                value={form.store}
+                onChange={(e) => setForm((prev) => ({ ...prev, store: e.target.value }))}
+                style={styles.webSelect as any}
               >
-                <Text style={{ padding: 8 }}>{store.name}</Text>
-              </TouchableOpacity>
-            ))
-          )}
-        </View>
-      )}
+                <option value="">اختر المتجر</option>
+                {stores.map((store) => (
+                  <option key={store._id} value={store._id}>
+                    {store.name}
+                  </option>
+                ))}
+              </select>
+            ) : (
+              stores.map((store) => {
+                const selected = form.store === store._id;
+                return (
+                  <Pressable
+                    key={store._id}
+                    style={[styles.option, selected && styles.optionSelected]}
+                    onPress={() => setForm((prev) => ({ ...prev, store: store._id }))}
+                  >
+                    <Text style={[styles.optionText, selected && styles.optionTextSelected]}>
+                      {store.name}
+                    </Text>
+                  </Pressable>
+                );
+              })
+            )}
+          </View>
+        )}
 
-      <Text style={styles.label}>المواصفات (اختياري):</Text>
-      {specifications.map((spec, idx) => (
-        <View key={idx} style={styles.specBox}>
-          <TextInput
-            placeholder="اسم المواصفة"
-            value={spec.name}
-            onChangeText={(val) => handleSpecChange(idx, 'name', val)}
-            style={styles.input}
-          />
-          <TextInput
-            placeholder="سعر إضافي"
-            value={spec.price}
-            keyboardType="numeric"
-            onChangeText={(val) => handleSpecChange(idx, 'price', val)}
-            style={styles.input}
-          />
-        </View>
-      ))}
-      <TouchableOpacity onPress={handleAddSpecification} style={styles.addSpecButton}>
-        <Text style={styles.addSpecText}>➕ إضافة مواصفة</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity onPress={handleSubmit} style={styles.saveButton}>
-        <Text style={styles.saveText}>حفظ المنتج</Text>
-      </TouchableOpacity>
-    </ScrollView>
+        <Text style={styles.sectionLabel}>المواصفات (اختياري)</Text>
+        {specifications.map((spec, idx) => (
+          <View key={idx} style={styles.specBox}>
+            <TextField
+              label="اسم المواصفة"
+              placeholder="اسم المواصفة"
+              value={spec.name}
+              onChangeText={(val) => handleSpecChange(idx, 'name', val)}
+            />
+            <TextField
+              label="سعر إضافي"
+              placeholder="سعر إضافي"
+              value={spec.price}
+              keyboardType="numeric"
+              onChangeText={(val) => handleSpecChange(idx, 'price', val)}
+            />
+          </View>
+        ))}
+        <Button title="إضافة مواصفة" variant="secondary" onPress={handleAddSpecification} />
+        <Button title="حفظ المنتج" onPress={handleSubmit} style={{ marginTop: space.md }} />
+      </Surface>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    padding: 20,
-    backgroundColor: '#fff',
+  wrap: {
+    maxWidth: 640,
+    width: '100%',
+    alignSelf: 'center',
   },
-  backButton: {
-    alignSelf: 'flex-start',
-    marginBottom: 10,
+  back: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.sm,
+    marginBottom: space.xl,
   },
-  input: {
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 8,
-    padding: 10,
-    marginBottom: 12,
+  backText: {
+    fontFamily: typography.fontArMd,
+    color: colors.primary,
+    fontSize: typography.sizeMd,
+  },
+  imageBlock: {
+    alignItems: 'center',
+    marginBottom: space.lg,
   },
   image: {
     width: 120,
     height: 120,
     borderRadius: 12,
-    alignSelf: 'center',
-    marginBottom: 10,
+    marginBottom: space.sm,
   },
   changeImage: {
-    color: '#c23a8c',
-    textAlign: 'center',
-    marginBottom: 20,
-  },
-  saveButton: {
-    backgroundColor: '#812732',
-    padding: 12,
-    borderRadius: 8,
-    marginTop: 10,
-  },
-  saveText: {
-    color: '#fff',
-    textAlign: 'center',
-    fontWeight: 'bold',
+    fontFamily: typography.fontArMd,
+    color: colors.primary,
+    fontSize: typography.sizeSm,
   },
   label: {
-    fontWeight: 'bold',
-    marginBottom: 6,
-    color: '#333',
+    ...textStyles.label,
+    marginBottom: space.xs,
+  },
+  sectionLabel: {
+    ...textStyles.label,
+    marginBottom: space.sm,
+    marginTop: space.sm,
+  },
+  fieldBlock: {
+    marginBottom: space.lg,
+  },
+  webSelect: {
+    padding: 12,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: colors.border,
+    width: '100%',
+    backgroundColor: colors.surface,
+    minHeight: 48,
+  },
+  option: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    borderRadius: 12,
+    padding: space.md,
+    marginBottom: space.sm,
+  },
+  optionSelected: {
+    borderColor: colors.brand,
+    backgroundColor: 'rgba(42, 155, 176, 0.1)',
+  },
+  optionText: {
+    ...textStyles.body,
+  },
+  optionTextSelected: {
+    color: colors.brandDeep,
+    fontFamily: typography.fontArMd,
   },
   specBox: {
-    marginBottom: 12,
-    backgroundColor: '#f9f9f9',
-    padding: 10,
-    borderRadius: 6,
-  },
-  addSpecButton: {
-    backgroundColor: '#ccc',
-    padding: 8,
-    borderRadius: 6,
-    alignSelf: 'flex-start',
-    marginBottom: 16,
-  },
-  addSpecText: {
-    color: '#333',
+    backgroundColor: colors.canvasAlt,
+    borderRadius: 12,
+    padding: space.md,
+    marginBottom: space.md,
   },
 });

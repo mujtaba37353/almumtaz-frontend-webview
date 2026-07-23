@@ -1,9 +1,26 @@
 import React, { useEffect, useState } from 'react';
 import {
-  View, Text, TextInput, StyleSheet, FlatList, TouchableOpacity, Alert, ActivityIndicator, ScrollView,
+  View,
+  Text,
+  StyleSheet,
+  FlatList,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from '../api/axiosInstance';
+import {
+  Screen,
+  PageHeader,
+  Surface,
+  Button,
+  TextField,
+  EmptyState,
+  colors,
+  space,
+  typography,
+  textStyles,
+} from '../../components/ui';
 
 export default function WarehousesScreen() {
   const [warehouses, setWarehouses] = useState<any[]>([]);
@@ -83,51 +100,145 @@ export default function WarehousesScreen() {
     }
   };
 
-  if (loading) return <ActivityIndicator style={{ marginTop: 40 }} color="#c23a8c" />;
+  if (loading) {
+    return (
+      <Screen scroll={false} contentStyle={styles.loading}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </Screen>
+    );
+  }
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>المستودعات والمخزون</Text>
-      <TextInput style={styles.input} placeholder="اسم مستودع جديد" value={name} onChangeText={setName} />
-      <TouchableOpacity style={styles.btn} onPress={create}><Text style={styles.btnText}>إنشاء مستودع</Text></TouchableOpacity>
+    <Screen>
+      <PageHeader title="المستودعات والمخزون" subtitle="إنشاء مستودعات وتحويل الأرصدة" />
 
-      <Text style={styles.subtitle}>المستودعات</Text>
-      {warehouses.map((w) => (
-        <Text key={w._id} style={styles.row}>{w.name} {w.isDefault ? '(افتراضي)' : ''} — {w.store?.name || 'عام'}</Text>
-      ))}
+      <Surface style={styles.section}>
+        <Text style={styles.sectionTitle}>مستودع جديد</Text>
+        <TextField
+          label="اسم المستودع"
+          placeholder="اسم مستودع جديد"
+          value={name}
+          onChangeText={setName}
+        />
+        <Button title="إنشاء مستودع" onPress={create} />
+      </Surface>
 
-      <Text style={styles.subtitle}>تحويل / جرد</Text>
-      <TextInput style={styles.input} placeholder="من مستودع (ID)" value={fromWh} onChangeText={setFromWh} />
-      <TextInput style={styles.input} placeholder="إلى مستودع (ID)" value={toWh} onChangeText={setToWh} />
-      <TextInput style={styles.input} placeholder="معرف المنتج" value={productId} onChangeText={setProductId} />
-      <TextInput style={styles.input} placeholder="الكمية / الرصيد الجديد" value={qty} onChangeText={setQty} keyboardType="numeric" />
-      <TouchableOpacity style={styles.btn} onPress={transfer}><Text style={styles.btnText}>تحويل</Text></TouchableOpacity>
-      <TouchableOpacity style={[styles.btn, styles.secondary]} onPress={adjust}><Text style={styles.btnText}>تسوية جرد</Text></TouchableOpacity>
-
-      <Text style={styles.subtitle}>الأرصدة</Text>
-      <FlatList
-        data={balances}
-        keyExtractor={(i) => i._id}
-        scrollEnabled={false}
-        renderItem={({ item }) => (
-          <View style={styles.card}>
-            <Text>{item.product?.name} @ {item.warehouse?.name}</Text>
-            <Text>الكمية: {item.qty} | التكلفة: {item.avgCost}</Text>
-          </View>
+      <Surface style={styles.section}>
+        <Text style={styles.sectionTitle}>المستودعات</Text>
+        {warehouses.length === 0 ? (
+          <EmptyState title="لا توجد مستودعات" />
+        ) : (
+          warehouses.map((w) => (
+            <View key={w._id} style={styles.whRow}>
+              <Text style={styles.whName}>{w.name}</Text>
+              <Text style={styles.whMeta}>
+                {w.isDefault ? 'افتراضي · ' : ''}
+                {w.store?.name || 'عام'}
+              </Text>
+            </View>
+          ))
         )}
-      />
-    </ScrollView>
+      </Surface>
+
+      <Surface style={styles.section}>
+        <Text style={styles.sectionTitle}>تحويل / جرد</Text>
+        <TextField
+          label="من مستودع"
+          placeholder="من مستودع (ID)"
+          value={fromWh}
+          onChangeText={setFromWh}
+        />
+        <TextField
+          label="إلى مستودع"
+          placeholder="إلى مستودع (ID)"
+          value={toWh}
+          onChangeText={setToWh}
+        />
+        <TextField
+          label="معرف المنتج"
+          placeholder="معرف المنتج"
+          value={productId}
+          onChangeText={setProductId}
+        />
+        <TextField
+          label="الكمية / الرصيد الجديد"
+          placeholder="الكمية / الرصيد الجديد"
+          value={qty}
+          onChangeText={setQty}
+          keyboardType="numeric"
+        />
+        <Button title="تحويل" onPress={transfer} />
+        <Button title="تسوية جرد" variant="secondary" onPress={adjust} style={{ marginTop: space.sm }} />
+      </Surface>
+
+      <Text style={styles.balancesTitle}>الأرصدة</Text>
+      {balances.length === 0 ? (
+        <EmptyState title="لا توجد أرصدة" />
+      ) : (
+        <FlatList
+          data={balances}
+          keyExtractor={(i) => i._id}
+          scrollEnabled={false}
+          renderItem={({ item }) => (
+            <Surface style={styles.card}>
+              <Text style={styles.cardTitle}>
+                {item.product?.name} @ {item.warehouse?.name}
+              </Text>
+              <Text style={styles.meta}>
+                الكمية: {item.qty} | التكلفة: {item.avgCost}
+              </Text>
+            </Surface>
+          )}
+        />
+      )}
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { padding: 16, backgroundColor: '#fff' },
-  title: { fontSize: 22, fontWeight: 'bold', color: '#c23a8c', marginBottom: 12 },
-  subtitle: { fontSize: 16, fontWeight: 'bold', marginTop: 16, marginBottom: 8 },
-  input: { borderWidth: 1, borderColor: '#00aacc', borderRadius: 8, padding: 10, marginBottom: 8 },
-  btn: { backgroundColor: '#c23a8c', padding: 12, borderRadius: 8, alignItems: 'center', marginBottom: 8 },
-  secondary: { backgroundColor: '#50b3c9' },
-  btnText: { color: '#fff', fontWeight: 'bold' },
-  row: { marginBottom: 4 },
-  card: { backgroundColor: '#f5f9fb', padding: 10, borderRadius: 8, marginBottom: 6 },
+  loading: {
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  section: {
+    marginBottom: space.lg,
+  },
+  sectionTitle: {
+    fontFamily: typography.fontArBold,
+    fontSize: typography.sizeLg,
+    color: colors.brandDeep,
+    marginBottom: space.md,
+  },
+  whRow: {
+    paddingVertical: space.sm,
+    borderBottomWidth: 1,
+    borderBottomColor: colors.border,
+  },
+  whName: {
+    ...textStyles.body,
+    fontFamily: typography.fontArMd,
+  },
+  whMeta: {
+    ...textStyles.label,
+    marginTop: space.xs,
+  },
+  balancesTitle: {
+    fontFamily: typography.fontArBold,
+    fontSize: typography.sizeLg,
+    color: colors.text,
+    marginBottom: space.md,
+    marginTop: space.sm,
+  },
+  card: {
+    marginBottom: space.md,
+  },
+  cardTitle: {
+    fontFamily: typography.fontArMd,
+    fontSize: typography.sizeMd,
+    color: colors.text,
+    marginBottom: space.xs,
+  },
+  meta: {
+    ...textStyles.subtitle,
+  },
 });

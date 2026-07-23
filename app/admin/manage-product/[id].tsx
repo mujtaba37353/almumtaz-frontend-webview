@@ -1,13 +1,29 @@
 import React, { useEffect, useState } from 'react';
 import {
-  View, Text, TextInput, StyleSheet, ScrollView,
-  TouchableOpacity, Image, Alert, ActivityIndicator
+  View,
+  Text,
+  StyleSheet,
+  Pressable,
+  Image,
+  Alert,
+  ActivityIndicator,
 } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import * as ImagePicker from 'expo-image-picker';
 import { Ionicons } from '@expo/vector-icons';
 import axios from '../../api/axiosInstance';
+import {
+  Screen,
+  Surface,
+  TextField,
+  Button,
+  PageHeader,
+  colors,
+  space,
+  typography,
+  textStyles,
+} from '../../../components/ui';
 
 export default function ManageProductScreen() {
   const { id } = useLocalSearchParams();
@@ -78,7 +94,6 @@ export default function ManageProductScreen() {
 
       let updatedImage = product.image;
 
-      // رفع الصورة إن وُجدت
       if (imageUri) {
         const response = await fetch(imageUri);
         const blob = await response.blob();
@@ -86,35 +101,40 @@ export default function ManageProductScreen() {
         const formData = new FormData();
         formData.append('image', file);
 
-        const uploadRes = await fetch(`${axios.defaults.baseURL?.replace('/api', '')}/api/upload/product`, {
-          method: 'POST',
-          headers: { Authorization: `Bearer ${token}` },
-          body: formData,
-        });
+        const uploadRes = await fetch(
+          `${axios.defaults.baseURL?.replace('/api', '')}/api/upload/product`,
+          {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${token}` },
+            body: formData,
+          }
+        );
 
         const data = await uploadRes.json();
         updatedImage = data.imageUrl;
       }
 
-      // تصفية وتحويل المواصفات
       const cleanSpecifications = specifications
-        .filter(spec => spec.name && spec.name.trim() !== '')
-        .map(spec => ({
+        .filter((spec) => spec.name && spec.name.trim() !== '')
+        .map((spec) => ({
           name: spec.name,
           price: spec.price ? Number(spec.price) : undefined,
         }));
 
-      await axios.put(`/products/${id}`, {
-        ...product,
-        image: updatedImage,
-        specifications: cleanSpecifications,
-      }, {
-        headers: { Authorization: `Bearer ${token}` },
-      });
+      await axios.put(
+        `/products/${id}`,
+        {
+          ...product,
+          image: updatedImage,
+          specifications: cleanSpecifications,
+        },
+        {
+          headers: { Authorization: `Bearer ${token}` },
+        }
+      );
 
       Alert.alert('تم', 'تم حفظ التعديلات');
       router.replace('/admin/products');
-
     } catch (err) {
       console.error('خطأ في الحفظ:', err);
       Alert.alert('خطأ', 'فشل حفظ التعديلات');
@@ -123,140 +143,159 @@ export default function ManageProductScreen() {
     }
   };
 
-  if (loading) return <ActivityIndicator size="large" color="#812732" style={{ marginTop: 50 }} />;
+  if (loading) {
+    return (
+      <Screen scroll={false} contentStyle={styles.centered}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </Screen>
+    );
+  }
+
+  if (!product) {
+    return (
+      <Screen scroll={false} contentStyle={styles.centered}>
+        <Text style={styles.backText}>تعذر تحميل المنتج</Text>
+        <Button title="رجوع" variant="ghost" onPress={() => router.back()} />
+      </Screen>
+    );
+  }
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-            <Ionicons name="arrow-back" size={24} color="#c23a8c" />
-        </TouchableOpacity>
-      <TouchableOpacity onPress={pickImage}>
-        <Image
-          source={imageUri ? { uri: imageUri } : product.image ? { uri: `${axios.defaults.baseURL?.replace('/api', '')}${product.image}` } : require('../../../assets/images/logo.png')}
-          style={styles.image}
-        />
-        <Text style={styles.changeImage}>📸 تغيير الصورة</Text>
-      </TouchableOpacity>
+    <Screen contentStyle={styles.wrap}>
+      <Pressable onPress={() => router.back()} style={styles.back}>
+        <Ionicons name="arrow-back" size={22} color={colors.primary} />
+        <Text style={styles.backText}>رجوع</Text>
+      </Pressable>
 
-      {[
-        { label: 'الاسم', key: 'name' },
-        { label: 'الوصف', key: 'description' },
-        { label: 'السعر', key: 'price' },
-        { label: 'الكمية', key: 'quantity' },
-        { label: 'التصنيف', key: 'category' },
-        { label: 'SKU', key: 'sku' },
-      ].map(({ label, key }) => (
-        <TextInput
-          key={key}
-          placeholder={label}
-          value={product[key]}
-          onChangeText={(val) => setProduct({ ...product, [key]: val })}
-          style={styles.input}
-        />
-      ))}
+      <PageHeader title="تعديل المنتج" subtitle={product.name} />
 
-      <Text style={styles.label}>المواصفات:</Text>
-      {specifications.map((spec, index) => (
-        <View key={index} style={styles.specBox}>
-          <TextInput
-            placeholder="اسم المواصفة"
-            value={spec.name}
-            onChangeText={(val) => handleSpecChange(index, 'name', val)}
-            style={styles.input}
+      <Surface>
+        <Pressable onPress={pickImage} style={styles.imageBlock}>
+          <Image
+            source={
+              imageUri
+                ? { uri: imageUri }
+                : product.image
+                  ? { uri: `${axios.defaults.baseURL?.replace('/api', '')}${product.image}` }
+                  : require('../../../assets/images/logo.png')
+            }
+            style={styles.image}
           />
-          <TextInput
-            placeholder="سعر إضافي"
-            value={spec.price}
-            keyboardType="numeric"
-            onChangeText={(val) => handleSpecChange(index, 'price', val)}
-            style={styles.input}
-          />
-        </View>
-      ))}
+          <Text style={styles.changeImage}>تغيير الصورة</Text>
+        </Pressable>
 
-      <TouchableOpacity style={styles.addSpecButton} onPress={handleAddSpec}>
-        <Text style={styles.addSpecText}>➕ إضافة مواصفة</Text>
-      </TouchableOpacity>
+        <TextField
+          label="الاسم"
+          placeholder="الاسم"
+          value={String(product.name ?? '')}
+          onChangeText={(val) => setProduct({ ...product, name: val })}
+        />
+        <TextField
+          label="الوصف"
+          placeholder="الوصف"
+          value={String(product.description ?? '')}
+          onChangeText={(val) => setProduct({ ...product, description: val })}
+        />
+        <TextField
+          label="السعر"
+          placeholder="السعر"
+          value={String(product.price ?? '')}
+          onChangeText={(val) => setProduct({ ...product, price: val })}
+          keyboardType="numeric"
+        />
+        <TextField
+          label="الكمية"
+          placeholder="الكمية"
+          value={String(product.quantity ?? '')}
+          onChangeText={(val) => setProduct({ ...product, quantity: val })}
+          keyboardType="numeric"
+        />
+        <TextField
+          label="التصنيف"
+          placeholder="التصنيف"
+          value={String(product.category ?? '')}
+          onChangeText={(val) => setProduct({ ...product, category: val })}
+        />
+        <TextField
+          label="SKU"
+          placeholder="SKU"
+          value={String(product.sku ?? '')}
+          onChangeText={(val) => setProduct({ ...product, sku: val })}
+        />
 
-      <TouchableOpacity style={styles.saveButton} onPress={handleSave}>
-        <Text style={styles.saveText}>💾 حفظ</Text>
-      </TouchableOpacity>
+        <Text style={styles.sectionLabel}>المواصفات</Text>
+        {specifications.map((spec, index) => (
+          <View key={index} style={styles.specBox}>
+            <TextField
+              label="اسم المواصفة"
+              placeholder="اسم المواصفة"
+              value={String(spec.name ?? '')}
+              onChangeText={(val) => handleSpecChange(index, 'name', val)}
+            />
+            <TextField
+              label="سعر إضافي"
+              placeholder="سعر إضافي"
+              value={String(spec.price ?? '')}
+              keyboardType="numeric"
+              onChangeText={(val) => handleSpecChange(index, 'price', val)}
+            />
+          </View>
+        ))}
 
-      <TouchableOpacity style={styles.deleteButton} onPress={handleDelete}>
-        <Text style={styles.deleteText}>🗑️ حذف</Text>
-      </TouchableOpacity>
-    </ScrollView>
+        <Button title="إضافة مواصفة" variant="secondary" onPress={handleAddSpec} />
+        <Button title="حفظ" onPress={handleSave} style={{ marginTop: space.md }} />
+        <Button title="حذف" variant="danger" onPress={handleDelete} style={{ marginTop: space.md }} />
+      </Surface>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    padding: 20,
-    backgroundColor: '#fff',
+  wrap: {
+    maxWidth: 640,
+    width: '100%',
+    alignSelf: 'center',
   },
-  backButton: {
-    alignSelf: 'flex-start',
-    marginBottom: 10,
+  centered: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  back: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.sm,
+    marginBottom: space.xl,
+  },
+  backText: {
+    fontFamily: typography.fontArMd,
+    color: colors.primary,
+    fontSize: typography.sizeMd,
+  },
+  imageBlock: {
+    alignItems: 'center',
+    marginBottom: space.lg,
   },
   image: {
     width: 120,
     height: 120,
     borderRadius: 12,
-    alignSelf: 'center',
-    marginBottom: 10,
+    marginBottom: space.sm,
   },
   changeImage: {
-    textAlign: 'center',
-    color: '#c23a8c',
-    marginBottom: 20,
+    fontFamily: typography.fontArMd,
+    color: colors.primary,
+    fontSize: typography.sizeSm,
   },
-  input: {
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 8,
-    padding: 10,
-    marginBottom: 12,
-  },
-  label: {
-    fontWeight: 'bold',
-    marginBottom: 8,
-    color: '#333',
+  sectionLabel: {
+    ...textStyles.label,
+    marginBottom: space.sm,
+    marginTop: space.sm,
   },
   specBox: {
-    backgroundColor: '#f5f5f5',
-    padding: 10,
-    borderRadius: 8,
-    marginBottom: 10,
-  },
-  addSpecButton: {
-    backgroundColor: '#ccc',
-    padding: 10,
-    borderRadius: 8,
-    alignSelf: 'flex-start',
-    marginBottom: 16,
-  },
-  addSpecText: {
-    fontWeight: 'bold',
-  },
-  saveButton: {
-    backgroundColor: '#32a8c4',
-    padding: 12,
-    borderRadius: 8,
-    marginBottom: 10,
-  },
-  saveText: {
-    color: '#fff',
-    textAlign: 'center',
-    fontWeight: 'bold',
-  },
-  deleteButton: {
-    backgroundColor: '#cc4da0',
-    padding: 12,
-    borderRadius: 8,
-  },
-  deleteText: {
-    color: '#fff',
-    textAlign: 'center',
-    fontWeight: 'bold',
+    backgroundColor: colors.canvasAlt,
+    borderRadius: 12,
+    padding: space.md,
+    marginBottom: space.md,
   },
 });

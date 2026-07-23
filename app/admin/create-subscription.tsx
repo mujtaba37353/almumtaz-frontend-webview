@@ -1,23 +1,25 @@
 import React, { useEffect, useState } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  StyleSheet,
-  TouchableOpacity,
-  Alert,
-  ScrollView,
-  Image,
-  Switch,
-} from 'react-native';
+import { View, Text, StyleSheet, Pressable, Alert, Switch, ActivityIndicator } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import axios from '../api/axiosInstance';
 import { Ionicons } from '@expo/vector-icons';
+import {
+  Screen,
+  Surface,
+  TextField,
+  Button,
+  PageHeader,
+  colors,
+  space,
+  typography,
+  textStyles,
+} from '../../components/ui';
 
 export default function CreateSubscriptionPage() {
   const router = useRouter();
   const [role, setRole] = useState<string | null>(null);
+  const [checking, setChecking] = useState(true);
 
   const [name, setName] = useState('');
   const [monthlyPrice, setMonthlyPrice] = useState('');
@@ -32,6 +34,7 @@ export default function CreateSubscriptionPage() {
     const getRole = async () => {
       const savedRole = await AsyncStorage.getItem('role');
       setRole(savedRole);
+      setChecking(false);
     };
     getRole();
   }, []);
@@ -67,153 +70,133 @@ export default function CreateSubscriptionPage() {
     }
   };
 
-  if (role !== 'AppOwner') {
+  if (checking) {
     return (
-      <View style={styles.restricted}>
-        <Text style={styles.restrictedText}>ليس لديك صلاحية الوصول إلى هذه الصفحة</Text>
-      </View>
+      <Screen scroll={false} contentStyle={styles.centered}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </Screen>
     );
   }
 
-  const renderField = (icon: string, placeholder: string, value: string, setValue: (val: string) => void, keyboardType = 'default') => (
-    <View style={styles.inputWrapper}>
-      <Ionicons name={icon as any} size={20} color="#32a8c4" style={styles.inputIcon} />
-      <TextInput
-        placeholder={placeholder}
-        style={styles.input}
-        value={value}
-        onChangeText={setValue}
-        keyboardType={keyboardType}
-        placeholderTextColor="#999"
-      />
-    </View>
-  );
+  if (role !== 'AppOwner') {
+    return (
+      <Screen scroll={false} contentStyle={styles.centered}>
+        <Text style={styles.restrictedText}>ليس لديك صلاحية الوصول إلى هذه الصفحة</Text>
+        <Button title="رجوع" variant="ghost" onPress={() => router.back()} />
+      </Screen>
+    );
+  }
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      {/* زر رجوع */}
-      <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-        <Ionicons name="arrow-back" size={24} color="#c23a8c" />
-      </TouchableOpacity>
+    <Screen contentStyle={styles.wrap}>
+      <Pressable onPress={() => router.back()} style={styles.back}>
+        <Ionicons name="arrow-back" size={22} color={colors.primary} />
+        <Text style={styles.backText}>رجوع</Text>
+      </Pressable>
 
-      {/* الشعار */}
-      <Image source={require('../../assets/images/logo.png')} style={styles.logo} resizeMode="contain" />
+      <PageHeader title="إنشاء اشتراك" subtitle="حدد الأسعار والحدود المسموحة" />
 
-      
-        {renderField('reader-outline', 'Name', name, setName)}
-        {renderField('pricetag-outline', 'Monthly Price', monthlyPrice, setMonthlyPrice, 'numeric')}
-        {renderField('pricetags-outline', 'Yearly Price', yearlyPrice, setYearlyPrice, 'numeric')}
+      <Surface>
+        <TextField label="الاسم" placeholder="Name" value={name} onChangeText={setName} />
+        <TextField
+          label="السعر الشهري"
+          placeholder="Monthly Price"
+          value={monthlyPrice}
+          onChangeText={setMonthlyPrice}
+          keyboardType="numeric"
+        />
+        <TextField
+          label="السعر السنوي"
+          placeholder="Yearly Price"
+          value={yearlyPrice}
+          onChangeText={setYearlyPrice}
+          keyboardType="numeric"
+        />
+
         <View style={styles.switchRow}>
-        <Text style={styles.switchLabel}>
+          <Text style={styles.switchLabel}>
             نوع الاشتراك: {type === 'public' ? 'عام (Public)' : 'خاص (Private)'}
-        </Text>
-            <Switch
-                value={type === 'public'}
-                onValueChange={(val) => setType(val ? 'public' : 'private')}
-                thumbColor="#fff"
-                trackColor={{ false: '#32a8c4', true: '#ccc' }}
-                style={{ transform: [{ scaleX: 1.5 }, { scaleY: 1.5 }] }}
-            />
+          </Text>
+          <Switch
+            value={type === 'public'}
+            onValueChange={(val) => setType(val ? 'public' : 'private')}
+            thumbColor="#fff"
+            trackColor={{ false: colors.border, true: colors.brand }}
+          />
         </View>
 
-        {renderField('time-outline', 'Free Trial Days', freeTrialDays, setFreeTrialDays, 'numeric')}
-        {renderField('person-outline', 'Allowed Users', allowedUsers, setAllowedUsers, 'numeric')}
-        {renderField('storefront-outline', 'Allowed Stores', allowedStores, setAllowedStores, 'numeric')}
-        {renderField('cube-outline', 'Allowed Products', allowedProducts, setAllowedProducts, 'numeric')}
+        <TextField
+          label="أيام التجربة المجانية"
+          placeholder="Free Trial Days"
+          value={freeTrialDays}
+          onChangeText={setFreeTrialDays}
+          keyboardType="numeric"
+        />
+        <TextField
+          label="المستخدمون المسموحون"
+          placeholder="Allowed Users"
+          value={allowedUsers}
+          onChangeText={setAllowedUsers}
+          keyboardType="numeric"
+        />
+        <TextField
+          label="المتاجر المسموحة"
+          placeholder="Allowed Stores"
+          value={allowedStores}
+          onChangeText={setAllowedStores}
+          keyboardType="numeric"
+        />
+        <TextField
+          label="المنتجات المسموحة"
+          placeholder="Allowed Products"
+          value={allowedProducts}
+          onChangeText={setAllowedProducts}
+          keyboardType="numeric"
+        />
 
-      {/* أزرار الحفظ */}
-      <TouchableOpacity style={styles.saveButton} onPress={handleCreate}>
-        <Text style={styles.saveText}>Save</Text>
-      </TouchableOpacity>
-
-      <TouchableOpacity style={styles.inactiveButton}>
-        <Text style={styles.inactiveText}>Inactivate</Text>
-      </TouchableOpacity>
-    </ScrollView>
+        <Button title="حفظ" onPress={handleCreate} />
+      </Surface>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    padding: 20,
-    backgroundColor: '#fff',
-    alignItems: 'center',
+  wrap: {
+    maxWidth: 560,
+    width: '100%',
+    alignSelf: 'center',
   },
-  logo: {
-    width: 320,
-    height: 120,
-    marginVertical: 20,
-  },
-  inputWrapper: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    borderColor: '#32a8c4',
-    borderWidth: 1,
-    borderRadius: 8,
-    width: '40%',
-    marginBottom: 12,
-    paddingHorizontal: 10,
-    backgroundColor: '#fff',
-  },
-  inputIcon: {
-    marginRight: 8,
-  },
-  input: {
-    flex: 1,
-    height: 48,
-    fontSize: 16,
-    color: '#333',
-  },
-  switchRow: {
-  flexDirection: 'row',
-  alignItems: 'center',
-  justifyContent: 'space-between',
-  width: '40%',
-  marginTop: 12,
-  marginBottom: 20,
-  paddingHorizontal: 10,
-},
-switchLabel: {
-  fontSize: 18,
-  color: '#333',
-},
-  saveButton: {
-    backgroundColor: '#32a8c4',
-    paddingVertical: 12,
-    width: '40%',
-    borderRadius: 8,
-    marginTop: 20,
-  },
-  saveText: {
-    textAlign: 'center',
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  inactiveButton: {
-    backgroundColor: '#cc4da0',
-    paddingVertical: 12,
-    width: '40%',
-    borderRadius: 8,
-    marginTop: 12,
-  },
-  inactiveText: {
-    textAlign: 'center',
-    color: '#fff',
-    fontSize: 18,
-    fontWeight: 'bold',
-  },
-  backButton: {
-    alignSelf: 'flex-start',
-  },
-  restricted: {
+  centered: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
   },
+  back: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.sm,
+    marginBottom: space.xl,
+  },
+  backText: {
+    fontFamily: typography.fontArMd,
+    color: colors.primary,
+    fontSize: typography.sizeMd,
+  },
+  switchRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    marginBottom: space.lg,
+    gap: space.md,
+  },
+  switchLabel: {
+    ...textStyles.body,
+    flex: 1,
+  },
   restrictedText: {
-    fontSize: 16,
-    color: '#812732',
-    fontWeight: 'bold',
+    ...textStyles.subtitle,
+    color: colors.danger,
+    marginBottom: space.lg,
+    textAlign: 'center',
   },
 });

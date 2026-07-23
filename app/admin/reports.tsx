@@ -1,16 +1,19 @@
 import React, { useEffect, useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  ActivityIndicator,
-  Alert,
-} from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator, Alert, Pressable } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import axios from '../api/axiosInstance';
+import {
+  Screen,
+  PageHeader,
+  Surface,
+  EmptyState,
+  StatusBadge,
+  colors,
+  space,
+  typography,
+  textStyles,
+} from '../../components/ui';
 
 export default function ReportsScreen() {
   const router = useRouter();
@@ -41,62 +44,81 @@ export default function ReportsScreen() {
 
   if (loading) {
     return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color="#c23a8c" />
-      </View>
+      <Screen scroll={false} contentStyle={styles.center}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </Screen>
     );
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>التقارير والفواتير</Text>
+    <Screen>
+      <PageHeader title="التقارير والفواتير" subtitle="ملخص المبيعات وآخر الفواتير" />
 
-      <View style={styles.card}>
+      <Surface style={styles.card}>
         <Text style={styles.cardTitle}>ملخص المبيعات</Text>
-        <Text>إجمالي المبيعات: {(summary?.totalSales ?? 0).toFixed(2)} ر.س</Text>
-        <Text>الضريبة: {(summary?.totalVat ?? 0).toFixed(2)} ر.س</Text>
-        <Text>الخصومات: {(summary?.totalDiscount ?? 0).toFixed(2)} ر.س</Text>
-        <Text>عدد العمليات: {summary?.numberOfSales ?? 0}</Text>
-      </View>
+        <Text style={styles.body}>إجمالي المبيعات: {(summary?.totalSales ?? 0).toFixed(2)} ر.س</Text>
+        <Text style={styles.body}>الضريبة: {(summary?.totalVat ?? 0).toFixed(2)} ر.س</Text>
+        <Text style={styles.body}>الخصومات: {(summary?.totalDiscount ?? 0).toFixed(2)} ر.س</Text>
+        <Text style={styles.body}>عدد العمليات: {summary?.numberOfSales ?? 0}</Text>
+      </Surface>
 
       {(summary?.byStore || []).map((s: any) => (
-        <View key={s.storeId} style={styles.card}>
+        <Surface key={s.storeId} style={styles.card}>
           <Text style={styles.cardTitle}>{s.storeName}</Text>
-          <Text>المبيعات: {Number(s.total).toFixed(2)} ر.س</Text>
-          <Text>العمليات: {s.count}</Text>
-        </View>
+          <Text style={styles.body}>المبيعات: {Number(s.total).toFixed(2)} ر.س</Text>
+          <Text style={styles.body}>العمليات: {s.count}</Text>
+        </Surface>
       ))}
 
-      <Text style={[styles.title, { marginTop: 20 }]}>آخر الفواتير</Text>
-      {invoices.length === 0 && <Text>لا توجد فواتير بعد</Text>}
-      {invoices.map((inv) => (
-        <TouchableOpacity
-          key={inv._id}
-          style={styles.card}
-          onPress={() => router.push(`/admin/invoice/${inv._id}`)}
-        >
-          <Text style={styles.cardTitle}>{inv.invoiceNumber}</Text>
-          <Text>النوع: {inv.invoiceType} / {inv.documentType}</Text>
-          <Text>الحالة: {inv.status}</Text>
-          <Text>الإجمالي: {Number(inv.totalAmount).toFixed(2)} ر.س</Text>
-          <Text>الضريبة: {Number(inv.vatAmount).toFixed(2)} ر.س</Text>
-        </TouchableOpacity>
-      ))}
-    </ScrollView>
+      <Text style={styles.sectionTitle}>آخر الفواتير</Text>
+      {invoices.length === 0 ? (
+        <EmptyState title="لا توجد فواتير بعد" />
+      ) : (
+        invoices.map((inv) => (
+          <Pressable key={inv._id} onPress={() => router.push(`/admin/invoice/${inv._id}`)}>
+            <Surface style={styles.card}>
+              <View style={styles.cardHead}>
+                <Text style={styles.cardTitle}>{inv.invoiceNumber}</Text>
+                <StatusBadge
+                  active={inv.status === 'posted' || inv.status === 'cleared'}
+                  label={inv.status}
+                />
+              </View>
+              <Text style={styles.body}>
+                النوع: {inv.invoiceType} / {inv.documentType}
+              </Text>
+              <Text style={styles.body}>الإجمالي: {Number(inv.totalAmount).toFixed(2)} ر.س</Text>
+              <Text style={styles.body}>الضريبة: {Number(inv.vatAmount).toFixed(2)} ر.س</Text>
+            </Surface>
+          </Pressable>
+        ))
+      )}
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { padding: 20, backgroundColor: '#fff' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  title: { fontSize: 22, fontWeight: 'bold', color: '#c23a8c', marginBottom: 12 },
-  card: {
-    backgroundColor: '#f5f9fb',
-    borderRadius: 12,
-    padding: 14,
-    marginBottom: 10,
-    borderWidth: 1,
-    borderColor: '#d7eef3',
+  card: { marginBottom: space.md },
+  cardHead: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: space.sm,
+    gap: space.sm,
   },
-  cardTitle: { fontSize: 16, fontWeight: 'bold', marginBottom: 6, color: '#333' },
+  cardTitle: {
+    fontFamily: typography.fontArMd,
+    fontSize: typography.sizeMd,
+    color: colors.text,
+    marginBottom: space.xs,
+    flex: 1,
+  },
+  body: { ...textStyles.subtitle, marginTop: space.xs },
+  sectionTitle: {
+    ...textStyles.title,
+    fontSize: 18,
+    marginTop: space.lg,
+    marginBottom: space.md,
+  },
 });

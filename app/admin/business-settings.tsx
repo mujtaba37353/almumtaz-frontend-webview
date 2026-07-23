@@ -1,17 +1,19 @@
 import React, { useEffect, useState } from 'react';
-import {
-  View,
-  Text,
-  TextInput,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  Alert,
-  ActivityIndicator,
-} from 'react-native';
+import { View, Text, StyleSheet, Alert, ActivityIndicator, Pressable } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { useRouter } from 'expo-router';
 import axios from '../api/axiosInstance';
+import {
+  Screen,
+  PageHeader,
+  Surface,
+  Button,
+  TextField,
+  colors,
+  space,
+  typography,
+  textStyles,
+} from '../../components/ui';
 
 export default function BusinessSettingsScreen() {
   const router = useRouter();
@@ -105,102 +107,110 @@ export default function BusinessSettingsScreen() {
 
   if (loading) {
     return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color="#c23a8c" />
-      </View>
+      <Screen scroll={false} contentStyle={styles.center}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </Screen>
     );
   }
 
   const set = (key: string, value: any) => setForm((f) => ({ ...f, [key]: value }));
 
-  return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>بيانات المنشأة (ZATCA)</Text>
+  const schemeLabels: Record<string, string> = {
+    exclusive: 'خارج السعر',
+    inclusive: 'شامل',
+    none: 'بدون',
+  };
 
-      {[
-        ['name', 'اسم الحساب'],
-        ['legalNameAr', 'الاسم القانوني (عربي)'],
-        ['legalNameEn', 'الاسم القانوني (إنجليزي)'],
-        ['vatNumber', 'الرقم الضريبي (15 خانة)'],
-        ['crNumber', 'السجل التجاري'],
-        ['vatRate', 'نسبة الضريبة %'],
-        ['buildingNumber', 'رقم المبنى'],
-        ['streetName', 'اسم الشارع'],
-        ['district', 'الحي'],
-        ['city', 'المدينة'],
-        ['postalCode', 'الرمز البريدي'],
-      ].map(([key, label]) => (
-        <View key={key}>
-          <Text style={styles.label}>{label}</Text>
-          <TextInput
-            style={styles.input}
+  return (
+    <Screen>
+      <PageHeader
+        title="بيانات المنشأة"
+        subtitle="معلومات الحساب والعنوان والفوترة الإلكترونية"
+      />
+
+      <Surface>
+        {(
+          [
+            ['name', 'اسم الحساب'],
+            ['legalNameAr', 'الاسم القانوني (عربي)'],
+            ['legalNameEn', 'الاسم القانوني (إنجليزي)'],
+            ['vatNumber', 'الرقم الضريبي (15 خانة)'],
+            ['crNumber', 'السجل التجاري'],
+            ['vatRate', 'نسبة الضريبة %'],
+            ['buildingNumber', 'رقم المبنى'],
+            ['streetName', 'اسم الشارع'],
+            ['district', 'الحي'],
+            ['city', 'المدينة'],
+            ['postalCode', 'الرمز البريدي'],
+          ] as const
+        ).map(([key, label]) => (
+          <TextField
+            key={key}
+            label={label}
             value={(form as any)[key]}
             onChangeText={(t) => set(key, t)}
           />
-        </View>
-      ))}
-
-      <Text style={styles.label}>نظام الضريبة</Text>
-      <View style={styles.row}>
-        {(['exclusive', 'inclusive', 'none'] as const).map((s) => (
-          <TouchableOpacity
-            key={s}
-            style={[styles.chip, form.vatScheme === s && styles.chipActive]}
-            onPress={() => set('vatScheme', s)}
-          >
-            <Text style={{ color: form.vatScheme === s ? '#fff' : '#333' }}>{s}</Text>
-          </TouchableOpacity>
         ))}
-      </View>
 
-      <TouchableOpacity
-        style={[styles.chip, form.einvoicingEnabled && styles.chipActive, { marginTop: 12 }]}
-        onPress={() => set('einvoicingEnabled', !form.einvoicingEnabled)}
-      >
-        <Text style={{ color: form.einvoicingEnabled ? '#fff' : '#333' }}>
-          تفعيل الفوترة الإلكترونية
-        </Text>
-      </TouchableOpacity>
+        <Text style={styles.label}>نظام الضريبة</Text>
+        <View style={styles.row}>
+          {(['exclusive', 'inclusive', 'none'] as const).map((s) => (
+            <Pressable
+              key={s}
+              style={[styles.chip, form.vatScheme === s && styles.chipActive]}
+              onPress={() => set('vatScheme', s)}
+            >
+              <Text style={[styles.chipText, form.vatScheme === s && styles.chipTextActive]}>
+                {schemeLabels[s]}
+              </Text>
+            </Pressable>
+          ))}
+        </View>
 
-      <TouchableOpacity style={styles.btn} onPress={save} disabled={saving}>
-        <Text style={styles.btnText}>{saving ? 'جاري الحفظ...' : 'حفظ'}</Text>
-      </TouchableOpacity>
+        <Pressable
+          style={[styles.chip, form.einvoicingEnabled && styles.chipActive, styles.toggle]}
+          onPress={() => set('einvoicingEnabled', !form.einvoicingEnabled)}
+        >
+          <Text
+            style={[styles.chipText, form.einvoicingEnabled && styles.chipTextActive]}
+          >
+            تفعيل الفوترة الإلكترونية
+          </Text>
+        </Pressable>
 
-      <TouchableOpacity style={[styles.btn, styles.secondary]} onPress={() => router.push('/admin/zatca')}>
-        <Text style={styles.btnText}>إعدادات ربط Fatoora / ZATCA</Text>
-      </TouchableOpacity>
-    </ScrollView>
+        <Button title={saving ? 'جاري الحفظ...' : 'حفظ'} onPress={save} loading={saving} />
+        <Button
+          title="إعدادات ربط فاتورة / هيئة الزكاة"
+          variant="secondary"
+          onPress={() => router.push('/admin/zatca')}
+          style={{ marginTop: space.sm }}
+        />
+      </Surface>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { padding: 20, backgroundColor: '#fff' },
   center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  title: { fontSize: 22, fontWeight: 'bold', color: '#c23a8c', marginBottom: 16 },
-  label: { marginTop: 10, marginBottom: 4, color: '#444' },
-  input: {
-    borderWidth: 1,
-    borderColor: '#00aacc',
-    borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-  },
-  row: { flexDirection: 'row', flexWrap: 'wrap', gap: 8 },
+  label: { ...textStyles.label, marginBottom: space.sm },
+  row: { flexDirection: 'row', flexWrap: 'wrap', gap: space.sm, marginBottom: space.lg },
   chip: {
     borderWidth: 1,
-    borderColor: '#00aacc',
+    borderColor: colors.border,
+    backgroundColor: colors.canvasAlt,
     borderRadius: 8,
-    paddingHorizontal: 12,
-    paddingVertical: 8,
+    paddingHorizontal: space.md,
+    paddingVertical: space.sm,
   },
-  chipActive: { backgroundColor: '#50b3c9', borderColor: '#50b3c9' },
-  btn: {
-    backgroundColor: '#c23a8c',
-    padding: 14,
-    borderRadius: 8,
-    marginTop: 20,
-    alignItems: 'center',
+  chipActive: {
+    backgroundColor: colors.brand,
+    borderColor: colors.brand,
   },
-  secondary: { backgroundColor: '#50b3c9' },
-  btnText: { color: '#fff', fontWeight: 'bold' },
+  chipText: {
+    fontFamily: typography.fontArMd,
+    fontSize: typography.sizeSm,
+    color: colors.text,
+  },
+  chipTextActive: { color: colors.textOnBrand },
+  toggle: { marginBottom: space.xl, alignSelf: 'flex-start' },
 });

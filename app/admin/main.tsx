@@ -3,10 +3,6 @@ import {
   View,
   Text,
   StyleSheet,
-  Image,
-  TouchableOpacity,
-  ScrollView,
-  TextInput,
   ActivityIndicator,
   Dimensions,
   I18nManager,
@@ -14,6 +10,17 @@ import {
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { BarChart } from 'react-native-chart-kit';
 import axios from '../api/axiosInstance';
+import {
+  Screen,
+  PageHeader,
+  Surface,
+  Button,
+  TextField,
+  colors,
+  space,
+  typography,
+  textStyles,
+} from '../../components/ui';
 
 I18nManager.allowRTL(true);
 
@@ -57,109 +64,154 @@ export default function MainScreen() {
     datasets: [{ data: (stats?.chartData?.length ? stats.chartData : [0]).map((n: number) => n || 0) }],
   };
 
-  return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.location}>الرياض، السعودية</Text>
-        <Text style={styles.date}>{new Date().toLocaleString('ar-SA')}</Text>
-      </View>
+  const chartWidth = Math.min(Dimensions.get('window').width - 40, 700);
 
-      <Image source={require('../../assets/images/logo.png')} style={styles.logo} resizeMode="contain" />
+  return (
+    <Screen>
+      <PageHeader title="لوحة التحكم" subtitle="ملخص الأداء والإحصائيات" />
 
       <View style={styles.filters}>
-        <TextInput
-          style={styles.filterInput}
+        <TextField
           placeholder="من (YYYY-MM-DD)"
           value={from}
           onChangeText={setFrom}
+          containerStyle={styles.filterField}
         />
-        <TextInput
-          style={styles.filterInput}
+        <TextField
           placeholder="إلى (YYYY-MM-DD)"
           value={to}
           onChangeText={setTo}
+          containerStyle={styles.filterField}
         />
-        <TouchableOpacity style={styles.filterCheck} onPress={load}>
-          <Text style={{ color: '#fff', fontWeight: 'bold' }}>تطبيق</Text>
-        </TouchableOpacity>
+        <Button title="تطبيق" onPress={load} style={styles.filterBtn} />
       </View>
 
       {loading ? (
-        <ActivityIndicator size="large" color="#c23a8c" />
+        <ActivityIndicator size="large" color={colors.primary} style={{ marginTop: space.xl }} />
       ) : (
         <View style={styles.chartAndCards}>
-          <View style={styles.chartContainer}>
+          <Surface style={styles.chartContainer} padded={false}>
             <BarChart
               data={chartData}
-              width={Math.min(Dimensions.get('window').width - 40, 700)}
+              width={chartWidth}
               height={280}
               yAxisLabel=""
               yAxisSuffix=""
               fromZero
               showValuesOnTopOfBars
               chartConfig={{
-                backgroundGradientFrom: '#F5F5F5',
-                backgroundGradientTo: '#F5F5F5',
+                backgroundGradientFrom: colors.surface,
+                backgroundGradientTo: colors.canvasAlt,
                 decimalPlaces: 0,
-                color: (opacity = 1) => `rgba(194, 58, 140, ${opacity})`,
-                labelColor: () => '#333',
+                color: (opacity = 1) => `rgba(184, 50, 122, ${opacity})`,
+                labelColor: () => colors.text,
                 style: { borderRadius: 8 },
               }}
               style={{ borderRadius: 12 }}
             />
-          </View>
+          </Surface>
 
           <View style={styles.cards}>
-            {(role === 'AppOwner' || role === 'AppAdmin') ? (
+            {role === 'AppOwner' || role === 'AppAdmin' ? (
               <>
-                <View style={styles.box}>
-                  <Text style={styles.boxText}>نشطون: {stats?.activeUsers ?? 0}</Text>
-                  <Text style={styles.boxText}>غير نشطين: {stats?.inactiveUsers ?? 0}</Text>
-                </View>
-                <View style={styles.box}>
-                  <Text style={styles.boxText}>متاجر نشطة: {stats?.activeStores ?? 0}</Text>
-                  <Text style={styles.boxText}>متاجر متوقفة: {stats?.inactiveStores ?? 0}</Text>
-                </View>
-                <View style={styles.box}>
-                  <Text style={styles.boxText}>الحسابات: {stats?.accounts ?? 0}</Text>
-                </View>
+                <Surface style={styles.statCard}>
+                  <Text style={styles.statLabel}>المستخدمون</Text>
+                  <Text style={styles.statText}>نشطون: {stats?.activeUsers ?? 0}</Text>
+                  <Text style={styles.statText}>غير نشطين: {stats?.inactiveUsers ?? 0}</Text>
+                </Surface>
+                <Surface style={styles.statCard}>
+                  <Text style={styles.statLabel}>المتاجر</Text>
+                  <Text style={styles.statText}>نشطة: {stats?.activeStores ?? 0}</Text>
+                  <Text style={styles.statText}>متوقفة: {stats?.inactiveStores ?? 0}</Text>
+                </Surface>
+                <Surface style={styles.statCard}>
+                  <Text style={styles.statLabel}>الحسابات</Text>
+                  <Text style={styles.statValue}>{stats?.accounts ?? 0}</Text>
+                </Surface>
               </>
             ) : (
-              <View style={styles.subscriptionBox}>
+              <Surface style={styles.statCard}>
                 <Text style={styles.packageTitle}>
                   {stats?.subscription?.name || 'الاشتراك'}
                 </Text>
-                <Text style={styles.packageText}>الحساب: {stats?.accountName || '-'}</Text>
-                <Text style={styles.packageText}>مستخدمون نشطون: {stats?.activeUsers ?? 0}</Text>
-                <Text style={styles.packageText}>متاجر نشطة: {stats?.activeStores ?? 0}</Text>
-                <Text style={styles.packageText}>منتجات: {stats?.products ?? 0}</Text>
-                <Text style={styles.packageText}>مبيعات: {(stats?.totalSales ?? 0).toFixed?.(2) ?? stats?.totalSales}</Text>
-                <Text style={styles.packageText}>ضريبة: {(stats?.totalVat ?? 0).toFixed?.(2) ?? stats?.totalVat}</Text>
-                <Text style={styles.packageText}>جلسات مفتوحة: {stats?.openSessions ?? 0}</Text>
-              </View>
+                <Text style={styles.statText}>الحساب: {stats?.accountName || '-'}</Text>
+                <Text style={styles.statText}>مستخدمون نشطون: {stats?.activeUsers ?? 0}</Text>
+                <Text style={styles.statText}>متاجر نشطة: {stats?.activeStores ?? 0}</Text>
+                <Text style={styles.statText}>منتجات: {stats?.products ?? 0}</Text>
+                <Text style={styles.statText}>
+                  مبيعات: {(stats?.totalSales ?? 0).toFixed?.(2) ?? stats?.totalSales}
+                </Text>
+                <Text style={styles.statText}>
+                  ضريبة: {(stats?.totalVat ?? 0).toFixed?.(2) ?? stats?.totalVat}
+                </Text>
+                <Text style={styles.statText}>جلسات مفتوحة: {stats?.openSessions ?? 0}</Text>
+              </Surface>
             )}
           </View>
         </View>
       )}
-    </ScrollView>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { padding: 20, backgroundColor: '#fff' },
-  header: { flexDirection: 'row', justifyContent: 'space-between', marginBottom: 10 },
-  location: { fontSize: 16, color: '#333' },
-  date: { fontSize: 14, color: '#333' },
-  logo: { width: '80%', maxWidth: 420, height: 120, alignSelf: 'center', marginVertical: 10 },
-  filters: { flexDirection: 'row', justifyContent: 'center', marginVertical: 16, flexWrap: 'wrap', gap: 8 },
-  filterInput: { borderWidth: 1, borderColor: '#00aacc', borderRadius: 8, padding: 10, width: 140, margin: 4 },
-  filterCheck: { backgroundColor: '#00aacc', padding: 10, borderRadius: 8, margin: 4, justifyContent: 'center' },
-  chartAndCards: { flexDirection: 'row', justifyContent: 'space-between', flexWrap: 'wrap', gap: 20, marginTop: 12 },
-  chartContainer: { flex: 2, minWidth: 280, alignItems: 'center' },
-  cards: { flex: 1, minWidth: 220, maxWidth: 320, gap: 12 },
-  box: { backgroundColor: '#50b3c9', padding: 16, borderRadius: 12 },
-  boxText: { color: '#fff', fontSize: 16, marginVertical: 4 },
-  subscriptionBox: { backgroundColor: '#50b3c9', padding: 16, borderRadius: 12 },
-  packageTitle: { fontSize: 18, fontWeight: 'bold', color: '#fff', marginBottom: 10 },
-  packageText: { fontSize: 15, color: '#fff', marginBottom: 6 },
+  filters: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'flex-start',
+    gap: space.sm,
+    marginBottom: space.lg,
+  },
+  filterField: {
+    flexGrow: 1,
+    minWidth: 140,
+    maxWidth: 200,
+    marginBottom: 0,
+  },
+  filterBtn: {
+    minWidth: 100,
+    marginTop: 0,
+  },
+  chartAndCards: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: space.lg,
+  },
+  chartContainer: {
+    flex: 2,
+    minWidth: 280,
+    alignItems: 'center',
+    overflow: 'hidden',
+    padding: space.md,
+  },
+  cards: {
+    flex: 1,
+    minWidth: 220,
+    maxWidth: 320,
+    gap: space.md,
+  },
+  statCard: {
+    borderLeftWidth: 3,
+    borderLeftColor: colors.brand,
+  },
+  statLabel: {
+    ...textStyles.label,
+    color: colors.brandDeep,
+    marginBottom: space.sm,
+  },
+  packageTitle: {
+    fontFamily: typography.fontArBold,
+    fontSize: typography.sizeLg,
+    color: colors.brandDeep,
+    marginBottom: space.md,
+  },
+  statText: {
+    ...textStyles.body,
+    marginBottom: space.xs,
+  },
+  statValue: {
+    fontFamily: typography.fontSansBold,
+    fontSize: typography.sizeXl,
+    color: colors.primary,
+  },
 });

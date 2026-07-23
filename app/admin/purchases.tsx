@@ -1,9 +1,20 @@
 import React, { useEffect, useState } from 'react';
-import {
-  View, Text, TextInput, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, ScrollView,
-} from 'react-native';
+import { View, Text, StyleSheet, Alert, ActivityIndicator } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from '../api/axiosInstance';
+import {
+  Screen,
+  PageHeader,
+  Surface,
+  Button,
+  TextField,
+  EmptyState,
+  StatusBadge,
+  colors,
+  space,
+  typography,
+  textStyles,
+} from '../../components/ui';
 
 export default function PurchasesScreen() {
   const [orders, setOrders] = useState<any[]>([]);
@@ -100,54 +111,118 @@ export default function PurchasesScreen() {
     }
   };
 
-  if (loading) return <ActivityIndicator style={{ marginTop: 40 }} color="#c23a8c" />;
+  if (loading) {
+    return (
+      <Screen scroll={false} contentStyle={styles.center}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </Screen>
+    );
+  }
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>المشتريات والإمدادات</Text>
-      <Text>مورد: {suppliers.find((s) => s._id === supplier)?.name || supplier}</Text>
-      <TextInput style={styles.input} value={supplier} onChangeText={setSupplier} placeholder="معرف المورد" />
-      <TextInput style={styles.input} value={warehouse} onChangeText={setWarehouse} placeholder="معرف المستودع" />
-      <TextInput style={styles.input} value={product} onChangeText={setProduct} placeholder="معرف المنتج" />
-      <TextInput style={styles.input} value={qty} onChangeText={setQty} placeholder="الكمية" keyboardType="numeric" />
-      <TextInput style={styles.input} value={unitCost} onChangeText={setUnitCost} placeholder="التكلفة" keyboardType="numeric" />
+    <Screen>
+      <PageHeader
+        title="المشتريات والإمدادات"
+        subtitle="أوامر الشراء وفواتير الموردين"
+      />
 
-      <TouchableOpacity style={styles.btn} onPress={createPO}><Text style={styles.btnText}>إنشاء أمر شراء</Text></TouchableOpacity>
-      <TouchableOpacity style={[styles.btn, styles.secondary]} onPress={createAndPostInvoice}>
-        <Text style={styles.btnText}>فاتورة مشتريات + ترحيل</Text>
-      </TouchableOpacity>
+      <Surface style={styles.section}>
+        <Text style={styles.meta}>
+          المورد: {suppliers.find((s) => s._id === supplier)?.name || supplier}
+        </Text>
+        <TextField label="معرف المورد" value={supplier} onChangeText={setSupplier} />
+        <TextField label="معرف المستودع" value={warehouse} onChangeText={setWarehouse} />
+        <TextField label="معرف المنتج" value={product} onChangeText={setProduct} />
+        <TextField
+          label="الكمية"
+          value={qty}
+          onChangeText={setQty}
+          keyboardType="numeric"
+        />
+        <TextField
+          label="التكلفة"
+          value={unitCost}
+          onChangeText={setUnitCost}
+          keyboardType="numeric"
+        />
+        <Button title="إنشاء أمر شراء" onPress={createPO} />
+        <Button
+          title="فاتورة مشتريات + ترحيل"
+          variant="secondary"
+          onPress={createAndPostInvoice}
+          style={{ marginTop: space.sm }}
+        />
+      </Surface>
 
-      <Text style={styles.subtitle}>أوامر الشراء</Text>
-      {orders.map((o) => (
-        <View key={o._id} style={styles.card}>
-          <Text>{o.number} — {o.status} — {o.total}</Text>
-          <Text>{o.supplier?.name}</Text>
-          {['approved', 'partial'].includes(o.status) && (
-            <TouchableOpacity onPress={() => receive(o._id)}>
-              <Text style={{ color: '#c23a8c', fontWeight: 'bold' }}>استلام</Text>
-            </TouchableOpacity>
-          )}
-        </View>
-      ))}
+      <Text style={styles.sectionTitle}>أوامر الشراء</Text>
+      {orders.length === 0 ? (
+        <EmptyState title="لا توجد أوامر شراء" />
+      ) : (
+        orders.map((o) => (
+          <Surface key={o._id} style={styles.card}>
+            <View style={styles.cardHead}>
+              <Text style={styles.cardTitle}>{o.number}</Text>
+              <StatusBadge
+                active={['approved', 'partial', 'received'].includes(o.status)}
+                label={o.status}
+              />
+            </View>
+            <Text style={styles.body}>الإجمالي: {o.total}</Text>
+            <Text style={styles.body}>{o.supplier?.name}</Text>
+            {['approved', 'partial'].includes(o.status) && (
+              <Button
+                title="استلام"
+                variant="ghost"
+                onPress={() => receive(o._id)}
+                style={{ marginTop: space.sm, alignSelf: 'flex-start' }}
+              />
+            )}
+          </Surface>
+        ))
+      )}
 
-      <Text style={styles.subtitle}>فواتير المشتريات</Text>
-      {invoices.map((inv) => (
-        <View key={inv._id} style={styles.card}>
-          <Text>{inv.number} — {inv.status} — {inv.total}</Text>
-          <Text>المتبقي: {inv.balance}</Text>
-        </View>
-      ))}
-    </ScrollView>
+      <Text style={styles.sectionTitle}>فواتير المشتريات</Text>
+      {invoices.length === 0 ? (
+        <EmptyState title="لا توجد فواتير مشتريات" />
+      ) : (
+        invoices.map((inv) => (
+          <Surface key={inv._id} style={styles.card}>
+            <View style={styles.cardHead}>
+              <Text style={styles.cardTitle}>{inv.number}</Text>
+              <StatusBadge active={inv.status === 'posted'} label={inv.status} />
+            </View>
+            <Text style={styles.body}>الإجمالي: {inv.total}</Text>
+            <Text style={styles.body}>المتبقي: {inv.balance}</Text>
+          </Surface>
+        ))
+      )}
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { padding: 16, backgroundColor: '#fff' },
-  title: { fontSize: 22, fontWeight: 'bold', color: '#c23a8c', marginBottom: 12 },
-  subtitle: { fontSize: 16, fontWeight: 'bold', marginTop: 16, marginBottom: 8 },
-  input: { borderWidth: 1, borderColor: '#00aacc', borderRadius: 8, padding: 10, marginBottom: 8 },
-  btn: { backgroundColor: '#c23a8c', padding: 12, borderRadius: 8, alignItems: 'center', marginBottom: 8 },
-  secondary: { backgroundColor: '#50b3c9' },
-  btnText: { color: '#fff', fontWeight: 'bold' },
-  card: { backgroundColor: '#f5f9fb', padding: 10, borderRadius: 8, marginBottom: 6 },
+  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
+  section: { marginBottom: space.xl },
+  sectionTitle: {
+    ...textStyles.title,
+    fontSize: 18,
+    marginBottom: space.md,
+    marginTop: space.sm,
+  },
+  meta: { ...textStyles.body, marginBottom: space.md },
+  card: { marginBottom: space.md },
+  cardHead: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    marginBottom: space.sm,
+    gap: space.sm,
+  },
+  cardTitle: {
+    fontFamily: typography.fontArMd,
+    fontSize: typography.sizeMd,
+    color: colors.text,
+    flex: 1,
+  },
+  body: { ...textStyles.subtitle, marginTop: space.xs },
 });

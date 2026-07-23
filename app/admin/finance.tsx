@@ -1,9 +1,18 @@
 import React, { useEffect, useState } from 'react';
-import {
-  View, Text, StyleSheet, TouchableOpacity, Alert, ActivityIndicator, ScrollView, TextInput,
-} from 'react-native';
+import { View, Text, StyleSheet, Alert, ActivityIndicator, Pressable } from 'react-native';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from '../api/axiosInstance';
+import {
+  Screen,
+  PageHeader,
+  Surface,
+  Button,
+  TextField,
+  colors,
+  space,
+  typography,
+  textStyles,
+} from '../../components/ui';
 
 export default function FinanceScreen() {
   const [tab, setTab] = useState<'tb' | 'pl' | 'bs' | 'vat' | 'inv' | 'je'>('tb');
@@ -16,7 +25,7 @@ export default function FinanceScreen() {
   const [amount, setAmount] = useState('100');
   const [memo, setMemo] = useState('قيد يدوي');
 
-  const load = async ( whichtab = tab) => {
+  const load = async (whichtab = tab) => {
     try {
       setLoading(true);
       const token = await AsyncStorage.getItem('token');
@@ -69,53 +78,123 @@ export default function FinanceScreen() {
     }
   };
 
+  const tabs: [typeof tab, string][] = [
+    ['tb', 'ميزان'],
+    ['pl', 'دخل'],
+    ['bs', 'ميزانية'],
+    ['vat', 'ضريبة'],
+    ['inv', 'مخزون'],
+    ['je', 'قيود'],
+  ];
+
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>المحاسبة والتقارير المالية</Text>
-      <View style={styles.row}>
-        <TextInput style={styles.input} placeholder="من" value={from} onChangeText={setFrom} />
-        <TextInput style={styles.input} placeholder="إلى" value={to} onChangeText={setTo} />
-        <TouchableOpacity style={styles.chip} onPress={() => load()}><Text>تطبيق</Text></TouchableOpacity>
+    <Screen>
+      <PageHeader
+        title="المحاسبة والتقارير المالية"
+        subtitle="ميزان المراجعة والقوائم والقيود"
+      />
+
+      <View style={styles.filters}>
+        <TextField
+          placeholder="من"
+          value={from}
+          onChangeText={setFrom}
+          containerStyle={styles.filterField}
+        />
+        <TextField
+          placeholder="إلى"
+          value={to}
+          onChangeText={setTo}
+          containerStyle={styles.filterField}
+        />
+        <Button title="تطبيق" onPress={() => load()} style={styles.filterBtn} />
       </View>
+
       <View style={styles.tabs}>
-        {[
-          ['tb', 'ميزان'],
-          ['pl', 'دخل'],
-          ['bs', 'ميزانية'],
-          ['vat', 'ضريبة'],
-          ['inv', 'مخزون'],
-          ['je', 'قيود'],
-        ].map(([k, label]) => (
-          <TouchableOpacity key={k} style={[styles.chip, tab === k && styles.active]} onPress={() => setTab(k as any)}>
-            <Text style={{ color: tab === k ? '#fff' : '#333' }}>{label}</Text>
-          </TouchableOpacity>
+        {tabs.map(([k, label]) => (
+          <Pressable
+            key={k}
+            style={[styles.chip, tab === k && styles.chipActive]}
+            onPress={() => setTab(k)}
+          >
+            <Text style={[styles.chipText, tab === k && styles.chipTextActive]}>{label}</Text>
+          </Pressable>
         ))}
       </View>
 
-      {loading ? <ActivityIndicator color="#c23a8c" /> : (
-        <Text style={styles.mono}>{JSON.stringify(data, null, 2)}</Text>
-      )}
+      <Surface style={styles.section}>
+        {loading ? (
+          <ActivityIndicator color={colors.primary} />
+        ) : (
+          <Text style={styles.mono}>{JSON.stringify(data, null, 2)}</Text>
+        )}
+      </Surface>
 
-      <Text style={styles.subtitle}>قيد يدوي</Text>
-      <TextInput style={styles.input} value={debitCode} onChangeText={setDebitCode} placeholder="مدين" />
-      <TextInput style={styles.input} value={creditCode} onChangeText={setCreditCode} placeholder="دائن" />
-      <TextInput style={styles.input} value={amount} onChangeText={setAmount} placeholder="المبلغ" keyboardType="numeric" />
-      <TextInput style={styles.input} value={memo} onChangeText={setMemo} placeholder="البيان" />
-      <TouchableOpacity style={styles.btn} onPress={postManual}><Text style={styles.btnText}>ترحيل</Text></TouchableOpacity>
-    </ScrollView>
+      <Text style={styles.sectionTitle}>قيد يدوي</Text>
+      <Surface>
+        <TextField label="مدين" value={debitCode} onChangeText={setDebitCode} />
+        <TextField label="دائن" value={creditCode} onChangeText={setCreditCode} />
+        <TextField
+          label="المبلغ"
+          value={amount}
+          onChangeText={setAmount}
+          keyboardType="numeric"
+        />
+        <TextField label="البيان" value={memo} onChangeText={setMemo} />
+        <Button title="ترحيل" onPress={postManual} />
+      </Surface>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { padding: 16, backgroundColor: '#fff' },
-  title: { fontSize: 22, fontWeight: 'bold', color: '#c23a8c', marginBottom: 12 },
-  subtitle: { fontSize: 16, fontWeight: 'bold', marginTop: 20, marginBottom: 8 },
-  row: { flexDirection: 'row', gap: 8, marginBottom: 8, flexWrap: 'wrap' },
-  tabs: { flexDirection: 'row', flexWrap: 'wrap', gap: 8, marginBottom: 12 },
-  chip: { borderWidth: 1, borderColor: '#00aacc', borderRadius: 8, paddingHorizontal: 10, paddingVertical: 8 },
-  active: { backgroundColor: '#50b3c9', borderColor: '#50b3c9' },
-  input: { borderWidth: 1, borderColor: '#00aacc', borderRadius: 8, padding: 10, marginBottom: 8, minWidth: 100 },
-  mono: { fontSize: 11, backgroundColor: '#f5f5f5', padding: 8 },
-  btn: { backgroundColor: '#c23a8c', padding: 12, borderRadius: 8, alignItems: 'center' },
-  btnText: { color: '#fff', fontWeight: 'bold' },
+  filters: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    alignItems: 'flex-start',
+    gap: space.sm,
+    marginBottom: space.md,
+  },
+  filterField: {
+    flexGrow: 1,
+    minWidth: 120,
+    maxWidth: 200,
+    marginBottom: 0,
+  },
+  filterBtn: { minWidth: 100 },
+  tabs: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    gap: space.sm,
+    marginBottom: space.lg,
+  },
+  chip: {
+    borderWidth: 1,
+    borderColor: colors.border,
+    backgroundColor: colors.surface,
+    borderRadius: 8,
+    paddingHorizontal: space.md,
+    paddingVertical: space.sm,
+  },
+  chipActive: {
+    backgroundColor: colors.brand,
+    borderColor: colors.brand,
+  },
+  chipText: {
+    fontFamily: typography.fontArMd,
+    fontSize: typography.sizeSm,
+    color: colors.text,
+  },
+  chipTextActive: { color: colors.textOnBrand },
+  section: { marginBottom: space.xl },
+  sectionTitle: {
+    ...textStyles.title,
+    fontSize: 18,
+    marginBottom: space.md,
+  },
+  mono: {
+    fontFamily: typography.fontSans,
+    fontSize: typography.sizeXs,
+    color: colors.text,
+  },
 });

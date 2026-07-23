@@ -1,11 +1,19 @@
 import React, { useState } from 'react';
-import {
-  View, Text, TextInput, StyleSheet, TouchableOpacity, Alert, ScrollView
-} from 'react-native';
+import { Text, StyleSheet, Pressable, Alert } from 'react-native';
 import { useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from '../api/axiosInstance';
 import { Ionicons } from '@expo/vector-icons';
+import {
+  Screen,
+  Surface,
+  TextField,
+  Button,
+  PageHeader,
+  colors,
+  space,
+  typography,
+} from '../../components/ui';
 
 export default function CreateStoreScreen() {
   const router = useRouter();
@@ -40,69 +48,48 @@ export default function CreateStoreScreen() {
   };
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-        <Ionicons name="arrow-back" size={24} color="#c23a8c" />
-      </TouchableOpacity>
+    <Screen contentStyle={styles.wrap}>
+      <Pressable onPress={() => router.back()} style={styles.back}>
+        <Ionicons name="arrow-back" size={22} color={colors.primary} />
+        <Text style={styles.backText}>رجوع</Text>
+      </Pressable>
 
-      <Text style={styles.title}>Create New Store</Text>
+      <PageHeader title="إنشاء متجر جديد" subtitle="أدخل بيانات المتجر" />
 
-      <TextInput
-        style={styles.input}
-        placeholder="Store Name"
-        value={form.name}
-        onChangeText={(val) => setForm({ ...form, name: val })}
-      />
-
-      <TextInput
-        style={styles.input}
-        placeholder="Location (optional)"
-        value={form.location}
-        onChangeText={(val) => setForm({ ...form, location: val })}
-      />
-
-      <TouchableOpacity style={styles.saveButton} onPress={handleCreateStore} disabled={loading}>
-        <Text style={styles.saveText}>{loading ? 'Saving...' : 'Save Store'}</Text>
-      </TouchableOpacity>
-    </ScrollView>
+      <Surface>
+        <TextField
+          label="اسم المتجر"
+          placeholder="Store Name"
+          value={form.name}
+          onChangeText={(val) => setForm({ ...form, name: val })}
+        />
+        <TextField
+          label="الموقع (اختياري)"
+          placeholder="Location"
+          value={form.location}
+          onChangeText={(val) => setForm({ ...form, location: val })}
+        />
+        <Button title={loading ? 'جاري الحفظ...' : 'حفظ المتجر'} onPress={handleCreateStore} loading={loading} />
+      </Surface>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    padding: 20,
+  wrap: {
+    maxWidth: 560,
+    width: '100%',
+    alignSelf: 'center',
+  },
+  back: {
+    flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: '#fff',
+    gap: space.sm,
+    marginBottom: space.xl,
   },
-  backButton: {
-    alignSelf: 'flex-start',
-  },
-  title: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#c23a8c',
-    marginBottom: 20,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 8,
-    width: '80%',
-    marginBottom: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    backgroundColor: '#fff',
-  },
-  saveButton: {
-    backgroundColor: '#c23a8c',
-    paddingVertical: 12,
-    borderRadius: 8,
-    width: '60%',
-    marginTop: 10,
-  },
-  saveText: {
-    color: '#fff',
-    textAlign: 'center',
-    fontWeight: 'bold',
+  backText: {
+    fontFamily: typography.fontArMd,
+    color: colors.primary,
+    fontSize: typography.sizeMd,
   },
 });

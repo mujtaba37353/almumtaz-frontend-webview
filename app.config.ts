@@ -42,7 +42,8 @@ export default {
       typedRoutes: true,
     },
     extra: {
-      API_URL: process.env.API_URL || 'http://localhost:5000/api',
+      // Use 127.0.0.1 (not localhost) — browsers often resolve localhost to ::1 while the API listens on IPv4.
+      API_URL: process.env.API_URL || 'http://127.0.0.1:5000/api',
       eas: {
         projectId: process.env.EAS_PROJECT_ID || undefined,
       },

@@ -1,18 +1,20 @@
 import React, { useEffect, useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ScrollView,
-  ActivityIndicator,
-  TouchableOpacity,
-  Alert,
-  Share,
-} from 'react-native';
+import { View, Text, StyleSheet, ActivityIndicator, Alert, Share } from 'react-native';
 import { useLocalSearchParams } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from '../../api/axiosInstance';
 import QRCode from 'react-native-qrcode-svg';
+import {
+  Screen,
+  Surface,
+  Button,
+  PageHeader,
+  StatusBadge,
+  EmptyState,
+  colors,
+  space,
+  textStyles,
+} from '../../../components/ui';
 
 export default function InvoiceDetailScreen() {
   const { id } = useLocalSearchParams();
@@ -65,97 +67,121 @@ export default function InvoiceDetailScreen() {
 
   if (loading) {
     return (
-      <View style={styles.center}>
-        <ActivityIndicator size="large" color="#c23a8c" />
-      </View>
+      <Screen scroll={false} contentStyle={styles.centered}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </Screen>
     );
   }
 
   if (!invoice) {
     return (
-      <View style={styles.center}>
-        <Text>الفاتورة غير موجودة</Text>
-      </View>
+      <Screen scroll={false} contentStyle={styles.centered}>
+        <EmptyState title="الفاتورة غير موجودة" />
+      </Screen>
     );
   }
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <Text style={styles.title}>{invoice.invoiceNumber}</Text>
-      <Text>UUID: {invoice.uuid}</Text>
-      <Text>الحالة: {invoice.status}</Text>
-      <Text>النوع: {invoice.invoiceType} / {invoice.documentType}</Text>
-      <Text>الصافي: {Number(invoice.netAmount).toFixed(2)} ر.س</Text>
-      <Text>الضريبة: {Number(invoice.vatAmount).toFixed(2)} ر.س</Text>
-      <Text>الإجمالي: {Number(invoice.totalAmount).toFixed(2)} ر.س</Text>
+    <Screen contentStyle={styles.wrap}>
+      <PageHeader
+        title={invoice.invoiceNumber}
+        subtitle={`${invoice.invoiceType} / ${invoice.documentType}`}
+        right={<StatusBadge label={invoice.status} active={invoice.status === 'cleared' || invoice.status === 'reported'} />}
+      />
 
-      {invoice.qrBase64 ? (
-        <View style={styles.qrBox}>
-          <QRCode value={invoice.qrBase64} size={180} />
-          <Text style={styles.hint}>رمز QR للفاتورة (TLV Base64)</Text>
-        </View>
-      ) : null}
+      <Surface>
+        <Text style={styles.rowLabel}>UUID</Text>
+        <Text style={styles.rowValue}>{invoice.uuid}</Text>
 
-      <TouchableOpacity
-        style={styles.btn}
-        onPress={() =>
-          Share.share({
-            message: `فاتورة ${invoice.invoiceNumber}\nالإجمالي: ${invoice.totalAmount} SAR\nQR: ${invoice.qrBase64}`,
-          })
-        }
-      >
-        <Text style={styles.btnText}>مشاركة الإيصال</Text>
-      </TouchableOpacity>
+        <Text style={styles.rowLabel}>الصافي</Text>
+        <Text style={styles.rowValue}>{Number(invoice.netAmount).toFixed(2)} ر.س</Text>
 
-      {invoice.documentType === 'invoice' && (
-        <>
-          <TouchableOpacity style={[styles.btn, styles.secondary]} onPress={creditNote}>
-            <Text style={styles.btnText}>إنشاء إشعار دائن (مرتجع)</Text>
-          </TouchableOpacity>
-          <TouchableOpacity
-            style={[styles.btn, styles.secondary]}
-            onPress={async () => {
-              try {
-                const token = await AsyncStorage.getItem('token');
-                await axios.post(
-                  `/invoices/${id}/debit-note`,
-                  { reason: 'تسوية مدينة' },
-                  { headers: { Authorization: `Bearer ${token}` } }
-                );
-                Alert.alert('تم', 'تم إنشاء إشعار مدين');
-                load();
-              } catch (err: any) {
-                Alert.alert('خطأ', err?.response?.data?.message || 'فشل');
-              }
-            }}
-          >
-            <Text style={styles.btnText}>إنشاء إشعار مدين</Text>
-          </TouchableOpacity>
-        </>
-      )}
+        <Text style={styles.rowLabel}>الضريبة</Text>
+        <Text style={styles.rowValue}>{Number(invoice.vatAmount).toFixed(2)} ر.س</Text>
 
-      {['failed', 'queued', 'issued'].includes(invoice.status) && (
-        <TouchableOpacity style={[styles.btn, styles.secondary]} onPress={retry}>
-          <Text style={styles.btnText}>إعادة إرسال ZATCA</Text>
-        </TouchableOpacity>
-      )}
-    </ScrollView>
+        <Text style={styles.rowLabel}>الإجمالي</Text>
+        <Text style={styles.total}>{Number(invoice.totalAmount).toFixed(2)} ر.س</Text>
+
+        {invoice.qrBase64 ? (
+          <View style={styles.qrBox}>
+            <QRCode value={invoice.qrBase64} size={180} />
+            <Text style={styles.hint}>رمز QR للفاتورة (TLV Base64)</Text>
+          </View>
+        ) : null}
+
+        <Button
+          title="مشاركة الإيصال"
+          onPress={() =>
+            Share.share({
+              message: `فاتورة ${invoice.invoiceNumber}\nالإجمالي: ${invoice.totalAmount} SAR\nQR: ${invoice.qrBase64}`,
+            })
+          }
+          style={{ marginTop: space.lg }}
+        />
+
+        {invoice.documentType === 'invoice' && (
+          <>
+            <Button title="إنشاء إشعار دائن (مرتجع)" variant="secondary" onPress={creditNote} style={{ marginTop: space.md }} />
+            <Button
+              title="إنشاء إشعار مدين"
+              variant="secondary"
+              onPress={async () => {
+                try {
+                  const token = await AsyncStorage.getItem('token');
+                  await axios.post(
+                    `/invoices/${id}/debit-note`,
+                    { reason: 'تسوية مدينة' },
+                    { headers: { Authorization: `Bearer ${token}` } }
+                  );
+                  Alert.alert('تم', 'تم إنشاء إشعار مدين');
+                  load();
+                } catch (err: any) {
+                  Alert.alert('خطأ', err?.response?.data?.message || 'فشل');
+                }
+              }}
+              style={{ marginTop: space.md }}
+            />
+          </>
+        )}
+
+        {['failed', 'queued', 'issued'].includes(invoice.status) && (
+          <Button title="إعادة إرسال ZATCA" variant="secondary" onPress={retry} style={{ marginTop: space.md }} />
+        )}
+      </Surface>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: { padding: 20, backgroundColor: '#fff' },
-  center: { flex: 1, alignItems: 'center', justifyContent: 'center' },
-  title: { fontSize: 22, fontWeight: 'bold', color: '#c23a8c', marginBottom: 12 },
-  qrBox: { alignItems: 'center', marginVertical: 20 },
-  hint: { marginTop: 8, color: '#666' },
-  btn: {
-    backgroundColor: '#c23a8c',
-    padding: 14,
-    borderRadius: 8,
-    marginTop: 10,
+  wrap: {
+    maxWidth: 560,
+    width: '100%',
+    alignSelf: 'center',
+  },
+  centered: {
+    flex: 1,
+    justifyContent: 'center',
     alignItems: 'center',
   },
-  secondary: { backgroundColor: '#50b3c9' },
-  btnText: { color: '#fff', fontWeight: 'bold' },
+  rowLabel: {
+    ...textStyles.label,
+    marginTop: space.md,
+  },
+  rowValue: {
+    ...textStyles.body,
+    marginTop: space.xs,
+  },
+  total: {
+    ...textStyles.title,
+    color: colors.brandDeep,
+    marginTop: space.xs,
+  },
+  qrBox: {
+    alignItems: 'center',
+    marginTop: space.xl,
+  },
+  hint: {
+    ...textStyles.subtitle,
+    marginTop: space.sm,
+  },
 });

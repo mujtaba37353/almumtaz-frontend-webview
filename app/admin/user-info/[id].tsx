@@ -1,9 +1,18 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, Image, StyleSheet, TouchableOpacity, ScrollView } from 'react-native';
+import { Text, Image, StyleSheet, Pressable, ActivityIndicator } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from '../../api/axiosInstance';
 import { Ionicons } from '@expo/vector-icons';
+import {
+  Screen,
+  Surface,
+  PageHeader,
+  colors,
+  space,
+  typography,
+  textStyles,
+} from '../../../components/ui';
 
 export default function UserInfoScreen() {
   const { id } = useLocalSearchParams();
@@ -22,66 +31,97 @@ export default function UserInfoScreen() {
     if (id) fetchUser();
   }, [id]);
 
-  if (!user) return <Text style={{ textAlign: 'center', marginTop: 30 }}>جاري التحميل...</Text>;
+  if (!user) {
+    return (
+      <Screen scroll={false} contentStyle={styles.centered}>
+        <ActivityIndicator size="large" color={colors.primary} />
+        <Text style={styles.loadingText}>جاري التحميل...</Text>
+      </Screen>
+    );
+  }
 
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      {/* زر الرجوع */}
-      <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-        <Ionicons name="arrow-back" size={20} color="#fff" />
+    <Screen contentStyle={styles.wrap}>
+      <Pressable onPress={() => router.back()} style={styles.back}>
+        <Ionicons name="arrow-back" size={22} color={colors.primary} />
         <Text style={styles.backText}>رجوع</Text>
-      </TouchableOpacity>
+      </Pressable>
 
-      <Image
-        source={
-          user.profileImage
-            ? { uri: `${axios.defaults.baseURL?.replace('/api', '')}${user.profileImage}` }
-            : require('../../../assets/images/logo.png')
-        }
-        style={styles.avatar}
-      />
+      <PageHeader title="معلومات الموظف" subtitle={user.role} />
 
-      <Text style={styles.name}>اسم الموظف:{user.name}</Text>
-      <Text style={styles.detail}>📧 البريد الالكتروني: {user.email}</Text>
-      <Text style={styles.detail}>🎯 الوظيفة: {user.role}</Text>
-      {user.store?.name && (
-        <Text style={styles.detail}>🏬 المتجر: {user.store.name}</Text>
-        )}
-    </ScrollView>
+      <Surface style={styles.card}>
+        <Image
+          source={
+            user.profileImage
+              ? { uri: `${axios.defaults.baseURL?.replace('/api', '')}${user.profileImage}` }
+              : require('../../../assets/images/logo.png')
+          }
+          style={styles.avatar}
+        />
+
+        <Text style={styles.rowLabel}>اسم الموظف</Text>
+        <Text style={styles.rowValue}>{user.name}</Text>
+
+        <Text style={styles.rowLabel}>البريد الإلكتروني</Text>
+        <Text style={styles.rowValue}>{user.email}</Text>
+
+        <Text style={styles.rowLabel}>الوظيفة</Text>
+        <Text style={styles.rowValue}>{user.role}</Text>
+
+        {user.store?.name ? (
+          <>
+            <Text style={styles.rowLabel}>المتجر</Text>
+            <Text style={styles.rowValue}>{user.store.name}</Text>
+          </>
+        ) : null}
+      </Surface>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    padding: 20,
-    alignItems: 'center',
-    backgroundColor: '#fff',
+  wrap: {
+    maxWidth: 560,
+    width: '100%',
+    alignSelf: 'center',
   },
-  backButton: {
+  centered: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  loadingText: {
+    ...textStyles.subtitle,
+    marginTop: space.md,
+  },
+  back: {
     flexDirection: 'row',
-    alignSelf: 'flex-start',
-    backgroundColor: '#812732',
-    padding: 8,
-    borderRadius: 8,
-    marginBottom: 20,
+    alignItems: 'center',
+    gap: space.sm,
+    marginBottom: space.xl,
   },
   backText: {
-    color: '#fff',
-    marginLeft: 6,
+    fontFamily: typography.fontArMd,
+    color: colors.primary,
+    fontSize: typography.sizeMd,
+  },
+  card: {
+    alignItems: 'center',
   },
   avatar: {
     width: 120,
     height: 120,
     borderRadius: 60,
-    marginBottom: 16,
+    marginBottom: space.lg,
   },
-  name: {
-    fontSize: 20,
-    fontWeight: 'bold',
-    marginBottom: 8,
+  rowLabel: {
+    ...textStyles.label,
+    alignSelf: 'stretch',
+    marginTop: space.md,
   },
-  detail: {
-    fontSize: 16,
-    marginBottom: 4,
+  rowValue: {
+    ...textStyles.body,
+    alignSelf: 'stretch',
+    marginTop: space.xs,
   },
 });

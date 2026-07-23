@@ -1,17 +1,21 @@
 import React, { useEffect, useState } from 'react';
-import {
-  View,
-  Text,
-  StyleSheet,
-  ActivityIndicator,
-  TouchableOpacity,
-  Alert,
-  Image,
-} from 'react-native';
+import { Text, StyleSheet, ActivityIndicator, Pressable, Alert } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from '../../api/axiosInstance';
 import { Ionicons } from '@expo/vector-icons';
+import {
+  Screen,
+  Surface,
+  Button,
+  PageHeader,
+  StatusBadge,
+  EmptyState,
+  colors,
+  space,
+  typography,
+  textStyles,
+} from '../../../components/ui';
 
 export default function ViewAccountScreen() {
   const { id } = useLocalSearchParams();
@@ -58,105 +62,93 @@ export default function ViewAccountScreen() {
   }, [id]);
 
   if (loading) {
-    return <ActivityIndicator size="large" color="#812732" style={{ marginTop: 40 }} />;
+    return (
+      <Screen scroll={false} contentStyle={styles.centered}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </Screen>
+    );
   }
 
   if (!account) {
     return (
-      <View style={styles.centered}>
-        <Text style={styles.errorText}>Account not found</Text>
-        <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-        <Ionicons name="arrow-back" size={24} color="#c23a8c" />
-      </TouchableOpacity>
-      </View>
+      <Screen scroll={false} contentStyle={styles.centered}>
+        <EmptyState title="Account not found" />
+        <Button title="رجوع" variant="ghost" onPress={() => router.back()} />
+      </Screen>
     );
   }
 
   return (
-    <View style={styles.container}>
-      <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-        <Ionicons name="arrow-back" size={24} color="#c23a8c" />
-      </TouchableOpacity>
+    <Screen contentStyle={styles.wrap}>
+      <Pressable onPress={() => router.back()} style={styles.back}>
+        <Ionicons name="arrow-back" size={22} color={colors.primary} />
+        <Text style={styles.backText}>رجوع</Text>
+      </Pressable>
 
-      <Image source={require('../../../assets/images/logo.png')} style={styles.logo} resizeMode="contain" />
+      <PageHeader
+        title={account.name}
+        subtitle={account.owner?.email || ''}
+        right={<StatusBadge active={account.status === 'active'} />}
+      />
 
-      <Image source={require('../../../assets/images/logo.png')} style={styles.avatar} />
+      <Surface>
+        <Text style={styles.rowLabel}>صاحب الحساب</Text>
+        <Text style={styles.rowValue}>{account.owner?.email || '—'}</Text>
 
-      <Text style={styles.item}>👤 {account.name}</Text>
-      <Text style={styles.item}>📧 {account.owner?.email}</Text>
-      <Text style={styles.item}>📦 {account.subscription?.name || 'No subscription name'}</Text>
-      <Text style={styles.item}>
-        {account.status === 'active' ? '🟢 Active' : '🔴 Inactive'}
-      </Text>
+        <Text style={styles.rowLabel}>الاشتراك</Text>
+        <Text style={styles.rowValue}>{account.subscription?.name || 'No subscription name'}</Text>
 
-      {role === 'AccountOwner' && (
-        <TouchableOpacity
-          style={styles.editButton}
-          onPress={() => router.push(`/admin/edit-account/${account._id}`)}
-        >
-          <Text style={styles.buttonText}>Edit Account</Text>
-        </TouchableOpacity>
-      )}
+        <Text style={styles.rowLabel}>الحالة</Text>
+        <StatusBadge active={account.status === 'active'} />
 
-      <TouchableOpacity style={styles.deleteButton} onPress={handleDelete}>
-        <Text style={styles.buttonText}>Delete Account</Text>
-      </TouchableOpacity>
-    </View>
+        {role === 'AccountOwner' && (
+          <Button
+            title="تعديل الحساب"
+            onPress={() => router.push(`/admin/edit-account/${account._id}`)}
+            style={{ marginTop: space.xl }}
+          />
+        )}
+
+        <Button
+          title="حذف الحساب"
+          variant="danger"
+          onPress={handleDelete}
+          style={{ marginTop: space.md }}
+        />
+      </Surface>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    padding: 20,
-    backgroundColor: '#fff',
-    alignItems: 'center',
-  },
-  logo: {
-    width: 300,
-    height: 100,
-    marginBottom: 20,
-  },
-  avatar: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    marginBottom: 20,
-  },
-  item: {
-    fontSize: 16,
-    marginBottom: 10,
-    color: '#333',
-  },
-  editButton: {
-    backgroundColor: '#32a8c4',
-    padding: 12,
-    borderRadius: 8,
-    width: '40%',
-    marginTop: 20,
-    alignItems: 'center'
-  },
-  deleteButton: {
-    backgroundColor: '#cc4da0',
-    padding: 12,
-    borderRadius: 8,
-    width: '40%',
-    marginTop: 12,
-    alignItems: 'center'
-  },
-  backButton: {
-    alignSelf: 'flex-start',
-  },
-  buttonText: {
-    alignItems: 'center'
+  wrap: {
+    maxWidth: 560,
+    width: '100%',
+    alignSelf: 'center',
   },
   centered: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
   },
-  errorText: {
-    fontSize: 18,
-    color: 'red',
+  back: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.sm,
+    marginBottom: space.xl,
+  },
+  backText: {
+    fontFamily: typography.fontArMd,
+    color: colors.primary,
+    fontSize: typography.sizeMd,
+  },
+  rowLabel: {
+    ...textStyles.label,
+    marginTop: space.md,
+  },
+  rowValue: {
+    ...textStyles.body,
+    marginTop: space.xs,
+    marginBottom: space.sm,
   },
 });

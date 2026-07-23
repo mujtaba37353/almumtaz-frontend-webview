@@ -1,11 +1,21 @@
 import React, { useEffect, useState } from 'react';
-import {
-  View, Text, TextInput, StyleSheet, TouchableOpacity, Alert, ScrollView, Switch
-} from 'react-native';
+import { View, Text, StyleSheet, Pressable, Alert, Switch, ActivityIndicator } from 'react-native';
 import { useLocalSearchParams, useRouter } from 'expo-router';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import axios from '../../api/axiosInstance';
 import { Ionicons } from '@expo/vector-icons';
+import {
+  Screen,
+  Surface,
+  TextField,
+  Button,
+  PageHeader,
+  StatusBadge,
+  colors,
+  space,
+  typography,
+  textStyles,
+} from '../../../components/ui';
 
 export default function EditStoreScreen() {
   const { id } = useLocalSearchParams();
@@ -78,105 +88,93 @@ export default function EditStoreScreen() {
     ]);
   };
 
+  if (loading) {
+    return (
+      <Screen scroll={false} contentStyle={styles.centered}>
+        <ActivityIndicator size="large" color={colors.primary} />
+      </Screen>
+    );
+  }
+
   return (
-    <ScrollView contentContainerStyle={styles.container}>
-      <TouchableOpacity onPress={() => router.back()} style={styles.backButton}>
-        <Ionicons name="arrow-back" size={24} color="#c23a8c" />
-      </TouchableOpacity>
+    <Screen contentStyle={styles.wrap}>
+      <Pressable onPress={() => router.back()} style={styles.back}>
+        <Ionicons name="arrow-back" size={22} color={colors.primary} />
+        <Text style={styles.backText}>رجوع</Text>
+      </Pressable>
 
-      <Text style={styles.title}>Edit Store</Text>
-
-      <TextInput
-        style={styles.input}
-        placeholder="Store Name"
-        value={form.name}
-        onChangeText={(val) => setForm({ ...form, name: val })}
+      <PageHeader
+        title="تعديل المتجر"
+        subtitle={form.name}
+        right={<StatusBadge active={form.status === 'active'} />}
       />
 
-      <TextInput
-        style={styles.input}
-        placeholder="Location (optional)"
-        value={form.location}
-        onChangeText={(val) => setForm({ ...form, location: val })}
-      />
-
-      <View style={styles.switchRow}>
-        <Text style={styles.switchLabel}>Active Status</Text>
-        <Switch
-          value={form.status === 'active'}
-          onValueChange={(val) => setForm({ ...form, status: val ? 'active' : 'inactive' })}
+      <Surface>
+        <TextField
+          label="اسم المتجر"
+          placeholder="Store Name"
+          value={form.name}
+          onChangeText={(val) => setForm({ ...form, name: val })}
         />
-      </View>
 
-      <TouchableOpacity style={styles.saveButton} onPress={handleUpdateStore} disabled={loading}>
-        <Text style={styles.saveText}>{loading ? 'Saving...' : 'Update Store'}</Text>
-      </TouchableOpacity>
+        <TextField
+          label="الموقع (اختياري)"
+          placeholder="Location"
+          value={form.location}
+          onChangeText={(val) => setForm({ ...form, location: val })}
+        />
 
-      <TouchableOpacity style={styles.deleteButton} onPress={handleDeleteStore}>
-        <Text style={styles.deleteText}>🗑️ Delete Store</Text>
-      </TouchableOpacity>
-    </ScrollView>
+        <View style={styles.switchRow}>
+          <Text style={styles.switchLabel}>الحالة النشطة</Text>
+          <Switch
+            value={form.status === 'active'}
+            onValueChange={(val) => setForm({ ...form, status: val ? 'active' : 'inactive' })}
+            thumbColor="#fff"
+            trackColor={{ false: colors.border, true: colors.brand }}
+          />
+        </View>
+
+        <Button title="تحديث المتجر" onPress={handleUpdateStore} />
+        <Button
+          title="حذف المتجر"
+          variant="danger"
+          onPress={handleDeleteStore}
+          style={{ marginTop: space.md }}
+        />
+      </Surface>
+    </Screen>
   );
 }
 
 const styles = StyleSheet.create({
-  container: {
-    padding: 20,
+  wrap: {
+    maxWidth: 560,
+    width: '100%',
+    alignSelf: 'center',
+  },
+  centered: {
+    flex: 1,
+    justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#fff',
   },
-  backButton: {
-    alignSelf: 'flex-start',
+  back: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    gap: space.sm,
+    marginBottom: space.xl,
   },
-  title: {
-    fontSize: 22,
-    fontWeight: 'bold',
-    color: '#c23a8c',
-    marginBottom: 20,
-  },
-  input: {
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 8,
-    width: '80%',
-    marginBottom: 16,
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    backgroundColor: '#fff',
+  backText: {
+    fontFamily: typography.fontArMd,
+    color: colors.primary,
+    fontSize: typography.sizeMd,
   },
   switchRow: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    width: '80%',
-    marginBottom: 16,
+    marginBottom: space.lg,
   },
   switchLabel: {
-    fontSize: 16,
-    color: '#333',
-  },
-  saveButton: {
-    backgroundColor: '#c23a8c',
-    paddingVertical: 12,
-    borderRadius: 8,
-    width: '60%',
-    marginTop: 10,
-  },
-  saveText: {
-    color: '#fff',
-    textAlign: 'center',
-    fontWeight: 'bold',
-  },
-  deleteButton: {
-    backgroundColor: '#812732',
-    paddingVertical: 12,
-    borderRadius: 8,
-    width: '60%',
-    marginTop: 12,
-  },
-  deleteText: {
-    color: '#fff',
-    textAlign: 'center',
-    fontWeight: 'bold',
+    ...textStyles.body,
   },
 });

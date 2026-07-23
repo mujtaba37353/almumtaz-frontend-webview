@@ -1,9 +1,19 @@
 import React, { useEffect, useState } from 'react';
-import { View, Text, TouchableOpacity, StyleSheet, Image } from 'react-native';
+import {
+  View,
+  Text,
+  TouchableOpacity,
+  StyleSheet,
+  Image,
+  ScrollView,
+  Platform,
+} from 'react-native';
 import { Slot, useRouter, usePathname } from 'expo-router';
 import { Ionicons } from '@expo/vector-icons';
 import axios from '../api/axiosInstance';
 import AsyncStorage from '@react-native-async-storage/async-storage';
+import { colors, radius, space, typography } from '../../theme/tokens';
+import { LinearGradientFallback } from '../../components/ui';
 
 export default function AdminLayout() {
   const router = useRouter();
@@ -17,7 +27,6 @@ export default function AdminLayout() {
       const res = await axios.get('/users/profile', {
         headers: { Authorization: `Bearer ${token}` },
       });
-
       setUser(res.data);
       await AsyncStorage.setItem('user', JSON.stringify(res.data));
     } catch (err) {
@@ -93,6 +102,17 @@ export default function AdminLayout() {
     loadRole();
   }, []);
 
+  const handleLogout = async () => {
+    try {
+      await AsyncStorage.multiRemove(['token', 'role', 'user']);
+      delete axios.defaults.headers.common.Authorization;
+    } catch (err) {
+      console.error('فشل تسجيل الخروج:', err);
+    } finally {
+      router.replace('/login');
+    }
+  };
+
   const baseURL = axios.defaults.baseURL?.replace('/api', '') || '';
   const avatarUri = user?.profileImage
     ? { uri: `${baseURL}${user.profileImage}` }
@@ -101,51 +121,71 @@ export default function AdminLayout() {
   return (
     <View style={styles.wrapper}>
       <View style={styles.sidebar}>
-        <Image source={require('../../assets/images/logo.png')} style={styles.logo} resizeMode="contain" />
-
-        <View style={styles.profileSection}>
-          <Image source={avatarUri} style={styles.avatar} resizeMode="cover" />
-          <Text style={styles.welcome}>Welcome, {user?.name || 'User'}</Text>
-
-          <TouchableOpacity style={styles.editButton} onPress={() => router.push('/admin/profile')}>
-            <Text style={styles.editButtonText}>View</Text>
-          </TouchableOpacity>
-        </View>
-
-        <View style={styles.navList}>
-          {navItems.map((item, idx) => {
-            const isActive = pathname === item.path;
-
-            return (
+        <LinearGradientFallback
+          colors={[colors.brandDeep, colors.brand]}
+          style={styles.sidebarInner}
+        >
+          <View style={styles.sidebarHeader}>
+            <Image
+              source={require('../../assets/images/logo.png')}
+              style={styles.logo}
+              resizeMode="contain"
+            />
+            <View style={styles.profileSection}>
+              <Image source={avatarUri} style={styles.avatar} resizeMode="cover" />
+              <Text style={styles.welcome} numberOfLines={1}>
+                {user?.name || 'مستخدم'}
+              </Text>
               <TouchableOpacity
-                key={idx}
-                style={[styles.navItem, isActive && styles.activeItem]}
-                onPress={() =>
-                  router.push(
-                    item.params
-                      ? ({ pathname: item.path, params: item.params } as any)
-                      : item.path
-                  )
-                }
+                style={styles.editButton}
+                onPress={() => router.push('/admin/profile')}
               >
-                <Ionicons
-                  name={item.icon as any}
-                  size={20}
-                  color={isActive ? '#c23a8c' : '#ffffff'}
-                  style={styles.navIcon}
-                />
-                <Text style={[styles.navText, isActive && styles.activeText]}>
-                  {item.label}
-                </Text>
+                <Text style={styles.editButtonText}>الملف</Text>
               </TouchableOpacity>
-            );
-          })}
-        </View>
+            </View>
+          </View>
 
-        <TouchableOpacity onPress={() => router.replace('/')} style={styles.logoutButton}>
-          <Ionicons name="log-out-outline" size={20} color="#fff" />
-          <Text style={styles.navText}>Logout</Text>
-        </TouchableOpacity>
+          <ScrollView
+            style={styles.navScroll}
+            contentContainerStyle={styles.navList}
+            showsVerticalScrollIndicator={false}
+          >
+            {navItems.map((item, idx) => {
+              const isActive =
+                pathname === item.path ||
+                (item.path !== '/admin/main' && pathname?.startsWith(item.path));
+
+              return (
+                <TouchableOpacity
+                  key={idx}
+                  style={[styles.navItem, isActive && styles.activeItem]}
+                  onPress={() =>
+                    router.push(
+                      item.params
+                        ? ({ pathname: item.path, params: item.params } as any)
+                        : item.path
+                    )
+                  }
+                >
+                  <Ionicons
+                    name={item.icon as any}
+                    size={18}
+                    color={isActive ? colors.primary : colors.textOnBrand}
+                    style={styles.navIcon}
+                  />
+                  <Text style={[styles.navText, isActive && styles.activeText]}>
+                    {item.label}
+                  </Text>
+                </TouchableOpacity>
+              );
+            })}
+          </ScrollView>
+
+          <TouchableOpacity onPress={handleLogout} style={styles.logoutButton}>
+            <Ionicons name="log-out-outline" size={20} color="#fff" />
+            <Text style={styles.logoutText}>تسجيل الخروج</Text>
+          </TouchableOpacity>
+        </LinearGradientFallback>
       </View>
 
       <View style={styles.content}>
@@ -161,85 +201,117 @@ const styles = StyleSheet.create({
     flexDirection: 'row-reverse',
     width: '100%',
     height: '100%',
+    backgroundColor: colors.canvas,
   },
   sidebar: {
-    width: 250,
-    backgroundColor: '#50b3c9',
-    paddingTop: 30,
-    paddingHorizontal: 16,
-    alignItems: 'center',
-    justifyContent: 'space-between',
+    width: Platform.OS === 'web' ? 260 : 240,
     height: '100%',
+    maxHeight: '100%',
+    overflow: 'hidden',
+  },
+  sidebarInner: {
+    flex: 1,
+    paddingTop: space.xl,
+    paddingHorizontal: space.md,
+    paddingBottom: space.md,
+  },
+  sidebarHeader: {
+    alignItems: 'center',
+    flexShrink: 0,
+    paddingBottom: space.md,
+    borderBottomWidth: 1,
+    borderBottomColor: 'rgba(255,255,255,0.18)',
   },
   content: {
     flex: 1,
-    backgroundColor: '#fff',
-    padding: 20,
+    backgroundColor: colors.canvas,
   },
   logo: {
-    width: 180,
-    height: 80,
-    marginBottom: 10,
+    width: 132,
+    height: 52,
+    marginBottom: space.sm,
   },
   profileSection: {
     alignItems: 'center',
+    width: '100%',
   },
   avatar: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: '#fff',
-    marginBottom: 8,
+    width: 56,
+    height: 56,
+    borderRadius: 28,
+    backgroundColor: colors.surface,
+    marginBottom: space.sm,
+    borderWidth: 2,
+    borderColor: 'rgba(255,255,255,0.5)',
   },
   welcome: {
-    color: '#fff',
-    fontSize: 16,
-    marginTop: 8,
+    color: colors.textOnBrand,
+    fontSize: typography.sizeSm,
+    fontFamily: typography.fontArMd,
+    maxWidth: '100%',
+    textAlign: 'center',
   },
   editButton: {
-    marginTop: 8,
-    backgroundColor: '#c23a8c',
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 8,
+    marginTop: space.sm,
+    backgroundColor: colors.primary,
+    paddingHorizontal: space.md,
+    paddingVertical: space.xs,
+    borderRadius: radius.sm,
   },
   editButtonText: {
-    color: '#fff',
-    fontSize: 12,
+    color: colors.textOnBrand,
+    fontSize: typography.sizeXs,
+    fontFamily: typography.fontArMd,
+  },
+  navScroll: {
+    flex: 1,
+    width: '100%',
+    marginTop: space.md,
+    marginBottom: space.sm,
   },
   navList: {
-    flexGrow: 1,
-    marginTop: 20,
     width: '100%',
-    alignItems: 'center',
+    paddingBottom: space.sm,
+    gap: 2,
   },
   navItem: {
     flexDirection: 'row',
     alignItems: 'center',
-    paddingVertical: 15,
+    paddingVertical: 9,
+    paddingHorizontal: space.md,
+    borderRadius: radius.sm,
+    width: '100%',
   },
   navIcon: {
-    marginRight: 10,
-    marginLeft: 5,
+    marginRight: space.sm,
   },
   navText: {
-    color: '#fff',
-    fontSize: 24,
+    color: colors.textOnBrand,
+    fontSize: typography.sizeMd,
+    fontFamily: typography.fontAr,
+    flexShrink: 1,
   },
   activeItem: {
-    width: '100%',
-    backgroundColor: '#fff',
-    borderRadius: 8,
-    paddingVertical: 12,
-    paddingHorizontal: 10,
+    backgroundColor: colors.surface,
   },
   activeText: {
-    color: '#c23a8c',
-    fontWeight: 'bold',
+    color: colors.primary,
+    fontFamily: typography.fontArBold,
   },
   logoutButton: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: 20,
+    justifyContent: 'center',
+    width: '100%',
+    paddingVertical: space.md,
+    borderTopWidth: 1,
+    borderTopColor: 'rgba(255,255,255,0.22)',
+    flexShrink: 0,
+    gap: space.sm,
+  },
+  logoutText: {
+    color: colors.textOnBrand,
+    fontSize: typography.sizeMd,
+    fontFamily: typography.fontArMd,
   },
 });
