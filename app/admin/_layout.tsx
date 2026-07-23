@@ -41,6 +41,12 @@ export default function AdminLayout() {
         { label: 'المستخدمون', icon: 'people-outline', path: '/admin/users' },
         { label: 'المتاجر', icon: 'storefront-outline', path: '/admin/stores' },
         { label: 'المنتجات', icon: 'cube-outline', path: '/admin/products' },
+        { label: 'العملاء', icon: 'person-outline', path: '/admin/parties', params: { kind: 'customer' } },
+        { label: 'الموردون', icon: 'people-circle-outline', path: '/admin/parties', params: { kind: 'supplier' } },
+        { label: 'المخزون', icon: 'file-tray-stacked-outline', path: '/admin/warehouses' },
+        { label: 'المشتريات', icon: 'cart-outline', path: '/admin/purchases' },
+        { label: 'المحاسبة', icon: 'book-outline', path: '/admin/finance' },
+        { label: 'الذمم', icon: 'wallet-outline', path: '/admin/vouchers' },
         { label: 'التقارير', icon: 'bar-chart-outline', path: '/admin/reports' },
         { label: 'المبيعات', icon: 'calculator-outline', path: '/admin/sales' },
         ...(role === 'AccountOwner'
@@ -55,6 +61,9 @@ export default function AdminLayout() {
         { label: 'الرئيسية', icon: 'home-outline', path: '/admin/main' },
         { label: 'المستخدمون', icon: 'people-outline', path: '/admin/users' },
         { label: 'المنتجات', icon: 'cube-outline', path: '/admin/products' },
+        { label: 'العملاء', icon: 'person-outline', path: '/admin/parties', params: { kind: 'customer' } },
+        { label: 'المخزون', icon: 'file-tray-stacked-outline', path: '/admin/warehouses' },
+        { label: 'المشتريات', icon: 'cart-outline', path: '/admin/purchases' },
         { label: 'التقارير', icon: 'bar-chart-outline', path: '/admin/reports' },
         { label: 'المبيعات', icon: 'calculator-outline', path: '/admin/sales' },
       ]);
@@ -63,6 +72,8 @@ export default function AdminLayout() {
         { label: 'الرئيسية', icon: 'home-outline', path: '/admin/main' },
         { label: 'المستخدمون', icon: 'people-outline', path: '/admin/users' },
         { label: 'المنتجات', icon: 'cube-outline', path: '/admin/products' },
+        { label: 'المخزون', icon: 'file-tray-stacked-outline', path: '/admin/warehouses' },
+        { label: 'الذمم', icon: 'wallet-outline', path: '/admin/vouchers' },
         { label: 'التقارير', icon: 'bar-chart-outline', path: '/admin/reports' },
         { label: 'المبيعات', icon: 'calculator-outline', path: '/admin/sales' },
       ]);
@@ -109,7 +120,13 @@ export default function AdminLayout() {
               <TouchableOpacity
                 key={idx}
                 style={[styles.navItem, isActive && styles.activeItem]}
-                onPress={() => router.push(item.path)}
+                onPress={() =>
+                  router.push(
+                    item.params
+                      ? ({ pathname: item.path, params: item.params } as any)
+                      : item.path
+                  )
+                }
               >
                 <Ionicons
                   name={item.icon as any}

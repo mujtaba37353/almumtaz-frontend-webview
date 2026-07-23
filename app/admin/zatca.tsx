@@ -148,6 +148,25 @@ export default function ZatcaSettingsScreen() {
       <TouchableOpacity style={styles.btn} onPress={save}>
         <Text style={styles.btnText}>حفظ الاعتماد</Text>
       </TouchableOpacity>
+      <TouchableOpacity
+        style={[styles.btn, styles.secondary]}
+        onPress={async () => {
+          try {
+            const token = await AsyncStorage.getItem('token');
+            const res = await axios.post(
+              '/zatca/generate-csr',
+              {},
+              { headers: { Authorization: `Bearer ${token}` } }
+            );
+            Alert.alert('CSR', res.data.csrPem?.slice(0, 180) + '...');
+            load();
+          } catch (err: any) {
+            Alert.alert('خطأ', err?.response?.data?.message || 'فشل توليد CSR');
+          }
+        }}
+      >
+        <Text style={styles.btnText}>توليد CSR</Text>
+      </TouchableOpacity>
       <TouchableOpacity style={[styles.btn, styles.secondary]} onPress={compliance}>
         <Text style={styles.btnText}>تشغيل اختبار الامتثال</Text>
       </TouchableOpacity>

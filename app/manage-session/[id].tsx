@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import {
-  View, Text, StyleSheet, ActivityIndicator, TouchableOpacity, TextInput, FlatList, Image, ToastAndroid, Platform
+  View, Text, StyleSheet, ActivityIndicator, TouchableOpacity, TextInput, FlatList, Image, ToastAndroid, Platform, ScrollView,
 } from 'react-native';
 import Toast from 'react-native-toast-message';
 import { useLocalSearchParams, useRouter } from 'expo-router';
@@ -27,6 +27,8 @@ export default function ManageSessionScreen() {
   const [vatScheme, setVatScheme] = useState<'inclusive' | 'exclusive' | 'none'>('exclusive');
   const [vatRate, setVatRate] = useState(15);
   const [lastInvoice, setLastInvoice] = useState<any>(null);
+  const [customers, setCustomers] = useState<any[]>([]);
+  const [customerId, setCustomerId] = useState('');
   const [showAddProductPrompt, setShowAddProductPrompt] = useState(false);
   const [lastScannedSku, setLastScannedSku] = useState<string | null>(null);
   const [scannedBarcode, setScannedBarcode] = useState('');
@@ -58,6 +60,15 @@ const barcodeInputRef = useRef<TextInputType>(null);
           });
           if (acc.data?.vatScheme) setVatScheme(acc.data.vatScheme);
           if (acc.data?.vatRate != null) setVatRate(acc.data.vatRate);
+        } catch {
+          /* optional */
+        }
+
+        try {
+          const cust = await axios.get('/customers', {
+            headers: { Authorization: `Bearer ${t}` },
+          });
+          setCustomers(cust.data || []);
         } catch {
           /* optional */
         }
@@ -177,6 +188,11 @@ const handleCreateSale = async () => {
     priceAtSale: item.price,
   }));
 
+  if (paymentType === 'credit' && !customerId) {
+    Toast.show({ type: 'error', text1: 'اختر عميلاً للبيع الآجل' });
+    return;
+  }
+
   const payload = {
     store: session.store._id,
     session: session._id,
@@ -184,6 +200,7 @@ const handleCreateSale = async () => {
     clientName,
     clientPhone,
     clientEmail,
+    customer: customerId || undefined,
     discount: parseFloat(discount) || 0,
     vatType: vatScheme,
     paymentType,
@@ -292,6 +309,28 @@ const resetSaleForm = () => {
 
       <View style={styles.cartPanel}>
         <Text style={styles.cartTitle}>🛍️ سلة المبيعات</Text>
+        <Text style={{ color: '#fff', marginBottom: 6 }}>العميل</Text>
+        <ScrollView horizontal style={{ marginBottom: 8 }}>
+          <TouchableOpacity
+            style={{ padding: 8, marginRight: 6, backgroundColor: !customerId ? '#fff' : '#2a7a8a', borderRadius: 6 }}
+            onPress={() => setCustomerId('')}
+          >
+            <Text style={{ color: !customerId ? '#333' : '#fff' }}>نقدي/زائر</Text>
+          </TouchableOpacity>
+          {customers.map((c) => (
+            <TouchableOpacity
+              key={c._id}
+              style={{ padding: 8, marginRight: 6, backgroundColor: customerId === c._id ? '#fff' : '#2a7a8a', borderRadius: 6 }}
+              onPress={() => {
+                setCustomerId(c._id);
+                setClientName(c.name || '');
+                setClientPhone(c.phone || '');
+              }}
+            >
+              <Text style={{ color: customerId === c._id ? '#333' : '#fff' }}>{c.name}</Text>
+            </TouchableOpacity>
+          ))}
+        </ScrollView>
         <TextInput placeholder="اسم العميل" value={clientName} onChangeText={setClientName} style={styles.input} />
         <TextInput placeholder="رقم العميل" value={clientPhone} onChangeText={setClientPhone} style={styles.input} />
         <TextInput placeholder="البريد الإلكتروني للعميل" value={clientEmail} onChangeText={setClientEmail} style={styles.input} />

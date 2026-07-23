@@ -108,9 +108,30 @@ export default function InvoiceDetailScreen() {
       </TouchableOpacity>
 
       {invoice.documentType === 'invoice' && (
-        <TouchableOpacity style={[styles.btn, styles.secondary]} onPress={creditNote}>
-          <Text style={styles.btnText}>إنشاء إشعار دائن (مرتجع)</Text>
-        </TouchableOpacity>
+        <>
+          <TouchableOpacity style={[styles.btn, styles.secondary]} onPress={creditNote}>
+            <Text style={styles.btnText}>إنشاء إشعار دائن (مرتجع)</Text>
+          </TouchableOpacity>
+          <TouchableOpacity
+            style={[styles.btn, styles.secondary]}
+            onPress={async () => {
+              try {
+                const token = await AsyncStorage.getItem('token');
+                await axios.post(
+                  `/invoices/${id}/debit-note`,
+                  { reason: 'تسوية مدينة' },
+                  { headers: { Authorization: `Bearer ${token}` } }
+                );
+                Alert.alert('تم', 'تم إنشاء إشعار مدين');
+                load();
+              } catch (err: any) {
+                Alert.alert('خطأ', err?.response?.data?.message || 'فشل');
+              }
+            }}
+          >
+            <Text style={styles.btnText}>إنشاء إشعار مدين</Text>
+          </TouchableOpacity>
+        </>
       )}
 
       {['failed', 'queued', 'issued'].includes(invoice.status) && (
